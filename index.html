@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mutfak Planı — Haftalık Yemek ve Alışveriş Planlayıcı</title>
+<meta name="description" content="Hane halkına, bütçeye ve alerjilere göre haftalık yemek planı, tarifler ve market-market alışveriş listesi oluşturur.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@300..700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%23c2571b'/%3E%3Cpath d='M7 12h10M12 7v10' stroke='%23faf6ef' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="./base.css">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<a class="skip-link" href="#main">İçeriğe geç</a>
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="var(--color-accent)"/><path d="M7 12h10M12 7v10" stroke="var(--color-bg)" stroke-width="2.4" stroke-linecap="round"/></svg>
+      <div>
+        <h1>Mutfak Planı</h1>
+        <p class="brand-sub">Haftalık yemek &amp; alışveriş planlayıcı</p>
+      </div>
+    </div>
+    <nav class="header-nav" id="header-nav" aria-label="Ana menü" hidden>
+      <button type="button" class="nav-tab is-active" data-results-tab="plan" data-testid="tab-plan">Haftalık Plan</button>
+      <button type="button" class="nav-tab" data-results-tab="shopping" data-testid="tab-shopping">Alışveriş Listesi</button>
+      <button type="button" class="nav-tab" data-results-tab="compare" data-testid="tab-compare">Market Karşılaştırma</button>
+      <button type="button" class="btn btn-ghost btn-sm" id="btn-edit-setup" data-testid="button-edit-setup">Ayarları Değiştir</button>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <!-- ======================= WIZARD ======================= -->
+  <section id="wizard" class="wizard" aria-label="Plan kurulumu">
+    <div class="wizard-card">
+      <ol class="stepper" id="stepper" aria-hidden="true"></ol>
+
+      <!-- STEP 1: HANE HALKI -->
+      <div class="wizard-step" data-step="1">
+        <h2>Hanenizde kimler yemek yiyecek?</h2>
+        <p class="step-hint">Yaş ve cinsiyet, porsiyon ve malzeme miktarlarını otomatik hesaplamak için kullanılır.</p>
+        <div id="members-list" class="members-list"></div>
+        <button type="button" class="btn btn-outline" id="btn-add-member" data-testid="button-add-member">+ Kişi ekle</button>
+        <p class="portion-note" id="portion-note" data-testid="text-portion-note"></p>
+      </div>
+
+      <!-- STEP 2: BÜTÇE -->
+      <div class="wizard-step" data-step="2" hidden>
+        <h2>Haftalık bütçeniz nedir?</h2>
+        <p class="step-hint">Kahvaltı ve akşam yemeği için tahmini toplam harcama aralığı (malzemeler dahil).</p>
+        <div class="budget-inputs">
+          <label class="field">
+            <span>Alt sınır</span>
+            <div class="budget-field">
+              <input type="number" id="budget-min" min="10" max="300" step="5" value="45" data-testid="input-budget-min">
+              <span class="unit">€</span>
+            </div>
+          </label>
+          <span class="budget-dash" aria-hidden="true">—</span>
+          <label class="field">
+            <span>Üst sınır</span>
+            <div class="budget-field">
+              <input type="number" id="budget-max" min="10" max="300" step="5" value="90" data-testid="input-budget-max">
+              <span class="unit">€</span>
+            </div>
+          </label>
+        </div>
+        <p class="step-hint small">İpucu: 4 kişilik bir hanede kahvaltı + akşam yemeği için tipik aralık 60–110 € arasıdır. Plan, aralığın ortasına yakın bir maliyetle oluşturulur.</p>
+      </div>
+
+      <!-- STEP 3: ELEME -->
+      <div class="wizard-step" data-step="3" hidden>
+        <h2>Neleri eleyelim?</h2>
+        <p class="step-hint">Alerjiniz olan, asla yenmesini istemediğiniz veya hoşlanmadığınız her şeyi seçin.</p>
+        <h3 class="chip-group-title">Alerjenler ve büyük gruplar</h3>
+        <div class="chip-group" id="allergen-chips"></div>
+        <h3 class="chip-group-title">Sevilmeyen malzemeler</h3>
+        <div class="chip-group" id="dislike-chips"></div>
+        <h3 class="chip-group-title">Serbest metin</h3>
+        <div class="field">
+          <input type="text" id="exclude-free" placeholder="Örn: kereviz, midye, kuzu eti…" data-testid="input-exclude-free">
+          <span class="field-help">Virgülle ayırarak birden fazla malzeme yazabilirsiniz.</span>
+        </div>
+      </div>
+
+      <!-- STEP 4: ŞARTLAR -->
+      <div class="wizard-step" data-step="4" hidden>
+        <h2>Mutlaka olmasını istedikleriniz?</h2>
+        <p class="step-hint">Haftalık planda garanti edilmesini istediğiniz kuralları seçin.</p>
+        <div class="chip-group" id="must-chips"></div>
+        <h3 class="chip-group-title">Belirli bir malzeme şartı</h3>
+        <div class="field">
+          <input type="text" id="must-free" placeholder="Örn: mercimek, tavuk, ıspanak…" data-testid="input-must-free">
+          <span class="field-help">Bu malzemeyi içeren en az 2 yemek plana alınır (mümkünse).</span>
+        </div>
+      </div>
+
+      <div class="wizard-nav">
+        <button type="button" class="btn btn-ghost" id="btn-prev" data-testid="button-prev" hidden>Geri</button>
+        <div class="wizard-nav-right">
+          <button type="button" class="btn btn-primary" id="btn-next" data-testid="button-next">Devam</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= RESULTS ======================= -->
+  <section id="results" aria-label="Oluşturulan plan" hidden>
+    <div class="results-head">
+      <div class="results-summary" id="results-summary"></div>
+      <div class="results-actions">
+        <button type="button" class="btn btn-outline" id="btn-regen" data-testid="button-regen">Başka bir plan</button>
+      </div>
+    </div>
+
+    <!-- PLAN TAB -->
+    <div class="results-tab" data-results-panel="plan" id="panel-plan"></div>
+
+    <!-- SHOPPING TAB -->
+    <div class="results-tab" data-results-panel="shopping" id="panel-shopping" hidden></div>
+
+    <!-- COMPARE TAB -->
+    <div class="results-tab" data-results-panel="compare" id="panel-compare" hidden></div>
+  </section>
+</main>
+
+<!-- RECIPE MODAL -->
+<div class="modal-backdrop" id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal" id="modal-inner"></div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="./app.js" defer></script>
+</body>
+</html>
