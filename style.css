@@ -208,7 +208,7 @@
 }
 .member-row {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 0.9fr 1fr 1.5fr auto;
   gap: var(--space-3);
   align-items: center;
   background: var(--color-surface-2);
