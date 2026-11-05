@@ -26,6 +26,7 @@
   --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
   --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
   --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+  --text-2xl: clamp(1.9rem, 1.4rem + 2.2vw, 2.9rem);
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -115,6 +116,21 @@
   align-items: center;
   gap: var(--space-1);
   flex-wrap: wrap;
+}
+.install-btn {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-full, 9999px);
+  padding: var(--space-1) var(--space-3);
+  background: transparent;
+  white-space: nowrap;
+  transition: background var(--transition-interactive), color var(--transition-interactive);
+}
+.install-btn:hover {
+  background: var(--color-accent);
+  color: var(--color-surface);
 }
 .lang-switch {
   display: flex;

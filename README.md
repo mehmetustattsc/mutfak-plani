@@ -15,6 +15,7 @@ Ev hanesine göre haftalık yemek planı, tarif, alışveriş listesi ve market 
 - **Market karşılaştırması**: Aynı sepetin tek markette maliyeti, "en uygun" işaretli
 - **Dolaptan Yemek**: Eldeli malzemeleri girin, eksik malzemeleri ve maliyetiyle tarif önerileri alın
 - **Özel Tarifler**: Evde ekmek, suşi, el yapımı makarna, lahmacun, hummus, granola
+- **PWA (telefona kurulabilir)**: Android/Chrome'da üstteki "Uygulamayı yükle" düğmesiyle veya tarayıcı menüsünden kurulur; iOS'ta Safari > Paylaş > Ana Ekrana Ekle. Tüm dosyalar önbelleğe alındığı için internet olmadan da çalışır
 
 ## Çalıştırma
 
@@ -37,6 +38,7 @@ Ardından tarayıcıda `http://localhost:3000` açın.
 | `app.js` | Uygulama mantığı (plan üretimi, alışveriş listesi, dolap önerileri) |
 | `data.js` | 136 tarif, ~94 malzeme, alerjen eşlemeleri, 9 mutfak |
 | `i18n-de.js` / `i18n-en.js` | Almanca ve İngilizce çeviriler (arayüz + 136 tarif) |
+| `manifest.webmanifest` + `sw.js` + `icons/` | PWA: kurulabilirlik ve çevrimdışı çalışma |
 | `prices-data.js` | Gerçek market fiyatları (Open Prices medyanları) |
 | `curated_prices.json` | Fiyat verisinin ham hali |
 | `tools/fetch_prices*.py` | Open Prices API'den fiyat çeken betikler |

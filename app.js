@@ -389,6 +389,12 @@ function buildShoppingList(pr) {
 /* ---------- Biçimlendirme ---------- */
 const fmtEur = (v) => v.toFixed(2).replace('.', state.lang === 'en' ? '.' : ',') + ' €';
 const fmtNum = (v) => v.toFixed(1).replace('.', state.lang === 'en' ? '.' : ',');
+/* Porsiyon gibi değerler için: 2,15 olduğu gibi, 3,0 tek ondalıkla gösterilir */
+const fmtPortion = (v) => {
+  const two = v.toFixed(2);
+  const s = two.endsWith('0') ? v.toFixed(1) : two;
+  return s.replace('.', state.lang === 'en' ? '.' : ',');
+};
 const fmtQty = (it) => {
   if (it.unit === 'adet') return `${it.qty} ${tUnit('adet')}`;
   if (it.unit === 'g') return `${it.qty} g`;
@@ -600,7 +606,7 @@ function renderMembers() {
 function updatePortionNote() {
   const p = totalPortions(state.members);
   $('#portion-note').textContent =
-    `${t('Hane toplamı')}: ${fmtNum(p)} ${t('porsiyon')} · ${t('yetişkin kadın = 1,0')} · ${t('yetişkin erkek = 1,15')} · ${t('çocuklar yaşa göre daha az')}. ${t('Malzeme miktarları buna göre otomatik ölçeklenir.')}`;
+    `${t('Hane toplamı')}: ${fmtPortion(p)} ${t('porsiyon')} · ${t('yetişkin kadın = 1,0')} · ${t('yetişkin erkek = 1,15')} · ${t('çocuklar yaşa göre daha az')}. ${t('Malzeme miktarları buna göre otomatik ölçeklenir.')}`;
 }
 
 /* ---------- Chip grupları ---------- */
@@ -696,7 +702,7 @@ function renderResults() {
   const awayLine = r.awayCount > 0 ? ` · ${r.awayCount} ${t('kişi için günlük beslenme çantası')}` : '';
   $('#results-summary').innerHTML = `
     <h2>${t('Haftalık planınız hazır')}</h2>
-    <p>${selNames} · ${state.members.length} ${t('kişi')} · ${fmtNum(r.portions)} ${t('porsiyon')}${awayLine} ·
+    <p>${selNames} · ${state.members.length} ${t('kişi')} · ${fmtPortion(r.portions)} ${t('porsiyon')}${awayLine} ·
     ${t('haftalık tüketim maliyeti')} <strong>${fmtEur(total)}</strong>
     (${t('bütçe aralığınız')} ${fmtEur(r.budgetMin)} – ${fmtEur(r.budgetMax)}) ·
     ${t('tam paket alımlarıyla alışveriş sepeti')} ${fmtEur(s.grandTotal)}</p>`;
@@ -1100,6 +1106,40 @@ function renderSpecials() {
     grid.appendChild(card);
   });
 }
+
+/* ---------- PWA: yükleme istemi ---------- */
+let deferredInstallPrompt = null;
+function initInstallPrompt() {
+  const btn = $('#button-install');
+  if (!btn) return;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    btn.hidden = false;
+  });
+  btn.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) return;
+    deferredInstallPrompt.prompt();
+    try { await deferredInstallPrompt.userChoice; } catch (err) { /* yoksay */ }
+    deferredInstallPrompt = null;
+    btn.hidden = true;
+  });
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    btn.hidden = true;
+    toast(t('Uygulama yüklendi.'));
+  });
+}
+initInstallPrompt();
+
+/* ---------- PWA: service worker kaydı ---------- */
+try {
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => { /* önizleme ortamında sessizce yoksay */ });
+    });
+  }
+} catch (e) { /* kısıtlı önizleme ortamında sessizce yoksay */ }
 
 /* ---------- Olay bağlama ---------- */
 $('#btn-add-member').addEventListener('click', () => {

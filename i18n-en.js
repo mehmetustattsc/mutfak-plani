@@ -401,3 +401,9 @@ Object.assign(window.I18N.en.ui, {
   'Mutfak Planı — Haftalık Yemek ve Alışveriş Planlayıcı': 'Meal Planner — Weekly Meal & Shopping Planner',
   'Mutfaklarınızı, hane halkınızı, bütçenizi ve alerjilerinizi seçin; haftalık yemek planı, tarifler ve gerçek market fiyatlarıyla alışveriş listesi oluşsun. Dolabınızdakilerle yemek bulun, özel tarifleri keşfedin.': 'Choose your cuisines, household, budget and allergies — a weekly meal plan, recipes and a shopping list with real supermarket prices are generated automatically. Find meals from what is in your fridge and discover special recipes.',
 });
+
+/* ---- PWA anahtarları ---- */
+Object.assign(window.I18N.en.ui, {
+  'Uygulamayı yükle': 'Install app',
+  'Uygulama yüklendi.': 'App installed.',
+});

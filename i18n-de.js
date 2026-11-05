@@ -403,3 +403,9 @@ Object.assign(window.I18N.de.ui, {
   'Mutfak Planı — Haftalık Yemek ve Alışveriş Planlayıcı': 'Küchenplaner — Wochenplaner für Essen & Einkauf',
   'Mutfaklarınızı, hane halkınızı, bütçenizi ve alerjilerinizi seçin; haftalık yemek planı, tarifler ve gerçek market fiyatlarıyla alışveriş listesi oluşsun. Dolabınızdakilerle yemek bulun, özel tarifleri keşfedin.': 'Wählen Sie Küchen, Haushalt, Budget und Allergien — der Wochenplan, Rezepte und eine Einkaufsliste mit echten Supermarktpreisen entstehen automatisch. Finden Sie Gerichte aus dem Kühlschrank und entdecken Sie besondere Rezepte.',
 });
+
+/* ---- PWA anahtarları ---- */
+Object.assign(window.I18N.de.ui, {
+  'Uygulamayı yükle': 'App installieren',
+  'Uygulama yüklendi.': 'App installiert.',
+});
