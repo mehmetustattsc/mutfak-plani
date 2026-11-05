@@ -1,74 +1,8 @@
 'use strict';
-
 /* =========================================================
-   MUTFAK PLANI — veri, planlama motoru ve arayüz
+   MUTFAK PLANI — planlama motoru ve arayüz
+   (veri katmanı data.js ve prices-data.js içinde)
    ========================================================= */
-
-/* ---------- Malzeme fiyat veritabanı (Almanya ortalaması, tahmini) ---------- */
-/* ppu: birim başına € (g için kg fiyatı / 1000) */
-const ING = {
-  'kırmızı mercimek': { cat: 'kuru', ppu: 0.0035, unit: 'g' },
-  'nohut': { cat: 'kuru', ppu: 0.004, unit: 'g' },
-  'kuru fasulye': { cat: 'kuru', ppu: 0.004, unit: 'g' },
-  'bulgur': { cat: 'temel', ppu: 0.0022, unit: 'g' },
-  'pirinç': { cat: 'temel', ppu: 0.0032, unit: 'g' },
-  'makarna': { cat: 'temel', ppu: 0.002, unit: 'g' },
-  'erişte': { cat: 'temel', ppu: 0.004, unit: 'g' },
-  'un': { cat: 'temel', ppu: 0.0011, unit: 'g' },
-  'yulaf': { cat: 'kahvalti', ppu: 0.004, unit: 'g' },
-  'tereyağı': { cat: 'sut', ppu: 0.012, unit: 'g' },
-  'sıvı yağ': { cat: 'temel', ppu: 0.002, unit: 'g' },
-  'zeytinyağı': { cat: 'temel', ppu: 0.008, unit: 'g' },
-  'soğan': { cat: 'sebze', ppu: 0.0015, unit: 'g' },
-  'sarımsak': { cat: 'sebze', ppu: 0.02, unit: 'g' },
-  'domates': { cat: 'sebze', ppu: 0.0028, unit: 'g' },
-  'domates salçası': { cat: 'temel', ppu: 0.006, unit: 'g' },
-  'biber salçası': { cat: 'temel', ppu: 0.008, unit: 'g' },
-  'dana kıyma': { cat: 'et', ppu: 0.018, unit: 'g' },
-  'kuşbaşı dana et': { cat: 'et', ppu: 0.022, unit: 'g' },
-  'tavuk göğsü': { cat: 'tavuk', ppu: 0.011, unit: 'g' },
-  'tavuk but': { cat: 'tavuk', ppu: 0.009, unit: 'g' },
-  'patlıcan': { cat: 'sebze', ppu: 0.0022, unit: 'g' },
-  'kabak': { cat: 'sebze', ppu: 0.0018, unit: 'g' },
-  'biber': { cat: 'sebze', ppu: 0.004, unit: 'g' },
-  'havuç': { cat: 'sebze', ppu: 0.0012, unit: 'g' },
-  'patates': { cat: 'sebze', ppu: 0.0015, unit: 'g' },
-  'ıspanak': { cat: 'sebze', ppu: 0.004, unit: 'g' },
-  'pırasa': { cat: 'sebze', ppu: 0.002, unit: 'g' },
-  'karnabahar': { cat: 'sebze', ppu: 0.0025, unit: 'g' },
-  'dondurulmuş bezelye': { cat: 'sebze', ppu: 0.003, unit: 'g' },
-  'taze fasulye': { cat: 'sebze', ppu: 0.005, unit: 'g' },
-  'mantar': { cat: 'sebze', ppu: 0.005, unit: 'g' },
-  'brokoli': { cat: 'sebze', ppu: 0.0035, unit: 'g' },
-  'salatalık': { cat: 'sebze', ppu: 0.002, unit: 'g' },
-  'marul': { cat: 'sebze', ppu: 0.003, unit: 'g' },
-  'süt': { cat: 'sut', ppu: 0.0011, unit: 'g' },
-  'yoğurt': { cat: 'sut', ppu: 0.0018, unit: 'g' },
-  'lor': { cat: 'sut', ppu: 0.006, unit: 'g' },
-  'beyaz peynir': { cat: 'kahvalti', ppu: 0.012, unit: 'g' },
-  'kaşar peyniri': { cat: 'sut', ppu: 0.014, unit: 'g' },
-  'yumurta': { cat: 'kahvalti', ppu: 0.45, unit: 'adet' },
-  'zeytin': { cat: 'kahvalti', ppu: 0.018, unit: 'g' },
-  'simit': { cat: 'firin', ppu: 0.5, unit: 'adet' },
-  'ekmek': { cat: 'firin', ppu: 0.4, unit: 'adet' },
-  'tahin': { cat: 'kahvalti', ppu: 0.02, unit: 'g' },
-  'pekmez': { cat: 'kahvalti', ppu: 0.008, unit: 'g' },
-  'bal': { cat: 'kahvalti', ppu: 0.02, unit: 'g' },
-  'muz': { cat: 'meyve', ppu: 0.35, unit: 'adet' },
-  'somon fileto': { cat: 'balik', ppu: 0.028, unit: 'g' },
-  'ton balığı konserve': { cat: 'balik', ppu: 1.6, unit: 'adet' },
-  'limon': { cat: 'meyve', ppu: 0.4, unit: 'adet' },
-  'nane': { cat: 'baharat', ppu: 0.3, unit: 'tutam' },
-  'maydanoz': { cat: 'sebze', ppu: 0.3, unit: 'tutam' },
-  'dereotu': { cat: 'sebze', ppu: 0.3, unit: 'tutam' },
-  'kimyon': { cat: 'baharat', ppu: 0.06, unit: 'tk' },
-  'karabiber': { cat: 'baharat', ppu: 0.06, unit: 'tk' },
-  'tuz': { cat: 'baharat', ppu: 0.02, unit: 'tk' },
-  'pul biber': { cat: 'baharat', ppu: 0.06, unit: 'tk' },
-  'kekik': { cat: 'baharat', ppu: 0.06, unit: 'tk' },
-};
-
-const UNIT_LABEL = { g: 'g', adet: 'adet', tutam: 'tutam', tk: 'tk' };
 
 /* ---------- Marketler ---------- */
 const STORES = {
@@ -79,161 +13,40 @@ const STORES = {
   Rewe: { factor: 1.04 },
   Edeka: { factor: 1.09 },
 };
-/* Kategori başına en uygun (ucuz/güvenilir) market */
-const CAT_STORE = {
-  sebze: 'Penny', meyve: 'Lidl', et: 'Aldi', tavuk: 'Lidl', balik: 'Rewe',
-  sut: 'Aldi', kahvalti: 'Netto', temel: 'Lidl', kuru: 'Aldi', firin: 'Lidl', baharat: 'Rewe',
-};
+const STORE_LIST = Object.keys(STORES);
 const CAT_LABEL = {
   sebze: 'Sebze & Meyve', meyve: 'Sebze & Meyve', et: 'Et & Şarküteri', tavuk: 'Et & Şarküteri',
   balik: 'Balık', sut: 'Süt Ürünleri', kahvalti: 'Kahvaltılık', temel: 'Temel Gıda',
   kuru: 'Bakliyat', firin: 'Fırın', baharat: 'Baharat',
 };
 
-/* ---------- Alerjen eşleme ---------- */
-const ALLERGEN_MAP = [
-  ['gluten', ['un', 'makarna', 'bulgur', 'erişte', 'ekmek', 'simit', 'yulaf']],
-  ['süt', ['süt', 'yoğurt', 'peynir', 'tereyağı', 'lor']],
-  ['yumurta', ['yumurta']],
-  ['susam', ['tahin']],
-  ['balık', ['somon', 'ton balığı']],
-  ['kırmızı et', ['dana kıyma', 'kuşbaşı dana et']],
-  ['tavuk', ['tavuk göğsü', 'tavuk but']],
-];
+/* ---------- Gerçek fiyat entegrasyonu ---------- */
+/* Adet bazlı bazı kalemler kg fiyatından çevrilir (ortalama adet ağırlığı) */
+const PIECE_KG = { 'muz': 0.12 };
 
-/* Kelime başına göre eşleştirme: 'tuz' ≠ 'un', 'beyaz peynir' = 'peynir' */
-function nameMatchesKey(name, key) {
-  return name === key || name.startsWith(key + ' ') || name.includes(' ' + key) || name.endsWith(' ' + key);
+function realUnitPrice(name, store) {
+  /* Gerçek veri varsa €/birim döndürür, yoksa null */
+  const cur = (typeof CURATED !== 'undefined' && CURATED[name]) ? CURATED[name] : null;
+  if (!cur || !cur.stores || !cur.stores[store]) return null;
+  const ing = ING[name];
+  const m = cur.stores[store].median;
+  if (cur.basis === 'kg' && ing.unit === 'g') return m / 1000;
+  if (cur.basis === 'kg' && ing.unit === 'adet') return m * (PIECE_KG[name] || 0.15);
+  return m; /* piece / egg / can → adet ile aynı */
 }
-function ingAllergens(name) {
-  const found = [];
-  for (const [alg, keys] of ALLERGEN_MAP) {
-    if (keys.some((k) => nameMatchesKey(name, k))) found.push(alg);
+function unitPrice(name, store) {
+  const real = realUnitPrice(name, store);
+  if (real != null) return { ppu: real, real: true, date: (CURATED[name].stores[store].latest || '').slice(0, 7) };
+  return { ppu: ING[name].ppu * STORES[store].factor, real: false, date: null };
+}
+function bestStoreFor(name) {
+  let best = null;
+  for (const st of STORE_LIST) {
+    const p = unitPrice(name, st);
+    if (!best || p.ppu < best.ppu) best = { store: st, ...p };
   }
-  return found;
+  return best;
 }
-
-function allergensOf(recipe) {
-  /* Yan servis (opsiyonel) malzemeler alerjen elemesini tetiklemez */
-  const names = recipe.ingredients.filter((i) => !i[2]).map((i) => i[0]);
-  const found = [];
-  for (const [alg, keys] of ALLERGEN_MAP) {
-    if (names.some((n) => keys.some((k) => nameMatchesKey(n, k)))) found.push(alg);
-  }
-  return found;
-}
-
-/* ---------- Tarifler ---------- */
-function R(id, name, time, tags, ingredients, steps) {
-  return { id, name, time, tags, serves: 4, ingredients, steps, allergens: null };
-}
-
-const DINNER_RECIPES = [
-  R('mercimek-corba', 'Kırmızı Mercimek Çorbası + Ekmek', 40, ['corba', 'vegan', 'baklagil', 'tahil'],
-    [['kırmızı mercimek', 300], ['soğan', 100], ['havuç', 100], ['patates', 100], ['domates salçası', 15], ['tereyağı', 25], ['sıvı yağ', 20], ['nane', 1], ['kimyon', 1], ['ekmek', 1, true]],
-    ['Mercimeği yıkayın. Soğan, havuç ve patatesi küp doğrayın.', 'Sebzeleri sıvı yağda 3-4 dakika soteleyin, salçayı ekleyip kavurun.', 'Mercimeği ve 1,2 lt suyu ekleyip kısık ateşte 30 dakika pişirin.', 'Blender ile pürüzsüz hale getirin, tereyağı ve kimyonla tatlandırın.', 'Kızarmış ekmek ve kuru nane ile servis edin.']),
-
-  R('kuru-fasulye', 'Kuru Fasulye + Pirinç Pilavı', 90, ['baklagil', 'tahil'],
-    [['kuru fasulye', 350], ['soğan', 100], ['domates salçası', 20], ['sıvı yağ', 30], ['pirinç', 250], ['tereyağı', 20], ['tuz', 1]],
-    ['Fasulyeyi akşamdan ıslatın (ya da 1 saat haşlayın).', 'Soğanı yağda kavurun, salçayı ekleyin.', 'Fasulye ve 4 su bardağı suyu ekleyip yumuşayana kadar pişirin.', 'Ayrı tencerede tereyağında pirinci kavurup 1:1,5 oranında suyla pilavı pişirin.', 'Pilavın üzerine fasulye dökerek servis edin.']),
-
-  R('nohut-yemegi', 'Nohut Yemeği + Bulgur Pilavı', 80, ['baklagil', 'vegan', 'tahil'],
-    [['nohut', 300], ['soğan', 100], ['domates salçası', 20], ['biber salçası', 10], ['sıvı yağ', 30], ['bulgur', 250], ['biber', 100]],
-    ['Nohudu akşamdan ıslatın, yumuşayana kadar haşlayın.', 'Soğanı kavurup iki salçayı ekleyin.', 'Nohudu ve suyunu ekleyip 20 dakika kaynatın.', 'Bulguru 1:1,5 suda pilav gibi pişirin.', 'Bulgurun yanında sıcak servis edin.']),
-
-  R('etli-taze-fasulye', 'Etli Taze Fasulye + Pirinç', 60, ['etli', 'sebze', 'tahil'],
-    [['kuşbaşı dana et', 300], ['taze fasulye', 750], ['soğan', 100], ['domates salçası', 15], ['sıvı yağ', 25], ['pirinç', 200]],
-    ['Kuşbaşını yüksek ateşte mühürleyin.', 'Soğanı ekleyip kavurun, salçayı ilave edin.', 'Ayıklanmış fasulyeleri ekleyip 3 dakika soteleyin.', 'Üzerini geçecek kadar sıcak su ekleyip kısık ateşte 40 dakika pişirin.', 'Pirinç pilavıyla servis edin.']),
-
-  R('karniyarik', 'Karnıyarık + Pirinç Pilavı', 70, ['etli', 'tahil'],
-    [['patlıcan', 700], ['dana kıyma', 250], ['soğan', 150], ['domates', 200], ['biber', 100], ['domates salçası', 10], ['sıvı yağ', 60], ['pirinç', 200]],
-    ['Patlıcanları alacalı soyup tuzlu suda 15 dakika bekletin.', 'Az yağda iki tarafını hafif kızartın (ya da fırında 20 dakika pişirin).', 'Ayrı tavada kıyma ve soğanı kavurup salça, domates, biberle doldurmayı hazırlayın.', 'Patlıcanları yararak içine harcı doldurun.', 'Az su ekleyip 180 °C fırında 25 dakika pişirin. Pilavla servis edin.']),
-
-  R('tavuk-sote', 'Sebzeli Tavuk Sote', 35, ['tavuk', 'pratik', 'tahil'],
-    [['tavuk göğsü', 550], ['biber', 250], ['mantar', 200], ['soğan', 100], ['domates', 150], ['sıvı yağ', 25], ['pirinç', 200], ['karabiber', 1]],
-    ['Tavuğu kuşbaşı doğrayıp tuz ve karabiberle marine edin.', 'Yüksek ateşte tavuğu mühürleyip kenara alın.', 'Aynı tavada soğan, biber ve mantarı soteleyin.', 'Tavuğu geri ekleyip küp domateslerle 10 dakika pişirin.', 'Pirinç pilavı yanında servis edin.']),
-
-  R('firin-tavuk', 'Fırında Tavuk But + Patates', 75, ['tavuk', 'firin'],
-    [['tavuk but', 900], ['patates', 800], ['biber', 150], ['kekik', 2], ['sıvı yağ', 30], ['tuz', 1]],
-    ['Butları kekik, tuz ve yağ ile harmanlayın.', 'Patatesleri iri dilimleyip tepsiye yerleştirin.', 'Tavukları patateslerin üzerine dizin.', '200 °C fırında 60 dakika (arada çevirerek) pişirin.', 'Fırından çıkar çıkmaz servis edin.']),
-
-  R('bolonez', 'Spagetti Bolonez', 40, ['pratik', 'makarna'],
-    [['makarna', 400], ['dana kıyma', 300], ['soğan', 100], ['havuç', 80], ['domates', 250], ['domates salçası', 20], ['sıvı yağ', 25]],
-    ['Makarnayı diri haşlayın.', 'Soğan ve rendelenmiş havucu yağda kavurun.', 'Kıymayı ekleyip rengi dönene kadar pişirin.', 'Küp domates ve salçayı ekleyip 15 dakika kaynatın.', 'Sosu makarna ile karıştırıp servis edin.']),
-
-  R('mucver', 'Kabak Mücver + Yoğurtlu Sos', 40, ['vejetaryen'],
-    [['kabak', 700], ['yumurta', 3], ['un', 150], ['beyaz peynir', 100], ['dereotu', 1], ['sıvı yağ', 80], ['yoğurt', 250]],
-    ['Kabakları rendeleyip suyunu sıkın.', 'Yumurta, un, peynir ve dereotuyla karıştırın.', 'Kıvam koyu bir harç elde edin.', 'Yağda kaşık kaşık kızartın (ya da az yağla tavada).', 'Sarımsaklı yoğurt eşliğinde servis edin.']),
-
-  R('ispanak', 'Ispanak Yemeği + Pirinç', 35, ['vejetaryen', 'sebze', 'tahil'],
-    [['ıspanak', 800], ['soğan', 100], ['domates salçası', 15], ['pirinç', 200], ['sıvı yağ', 25]],
-    ['Ispanağı yıkayıp doğrayın.', 'Soğanı kavurup salçayı ekleyin.', 'Ispanağı ekleyip suyunu salana kadar soteleyin.', 'Az su ekleyip 15 dakika pişirin.', 'Pirinç pilavıyla servis edin.']),
-
-  R('mercimek-koftesi', 'Mercimek Köftesi + Salata', 50, ['vejetaryen', 'baklagil', 'pratik', 'tahil'],
-    [['kırmızı mercimek', 250], ['bulgur', 200], ['soğan', 150], ['domates salçası', 15], ['zeytinyağı', 30], ['marul', 150], ['limon', 1], ['maydanoz', 1]],
-    ['Mercimeği 2 su bardağı suyla haşlayın.', 'Haşlanmış mercimeğe bulguru ekleyip 15 dakika dinlendirin.', 'Kavrulmuş soğan ve salçayı, baharatları ekleyip yoğurun.', 'Elleri ıslatıp köfte şekli verin.', 'Marul, limon ve maydanozla servis edin.']),
-
-  R('somon-firin', 'Fırın Somon + Brokoli', 35, ['balik', 'pratik'],
-    [['somon fileto', 550], ['brokoli', 400], ['patates', 400], ['limon', 1], ['zeytinyağı', 30], ['kekik', 1]],
-    ['Somonu zeytinyağı, kekik ve limonla marine edin.', 'Brokoliyi ve patates dilimlerini tepsiye yayın.', '200 °C fırında 20-25 dakika pişirin.', 'Balığı sebzelerin üzerine koyup 10 dakika daha pişirin.', 'Limon dilimleriyle servis edin.']),
-
-  R('tonlu-makarna', 'Ton Balıklı Makarna', 25, ['balik', 'pratik', 'makarna'],
-    [['makarna', 400], ['ton balığı konserve', 2], ['domates', 200], ['soğan', 80], ['zeytinyağı', 30], ['maydanoz', 1], ['limon', 1]],
-    ['Makarnayı diri haşlayın.', 'Soğanı zeytinyağında pembeleştirin.', 'Domatesleri ekleyip 5 dakika pişirin.', 'Süzülmüş ton balığını ve makarnayı ekleyip karıştırın.', 'Limon ve maydanozla servis edin.']),
-
-  R('tavuklu-eriste', 'Tavuklu Sebzeli Erişte', 30, ['tavuk', 'pratik', 'makarna'],
-    [['erişte', 350], ['tavuk göğsü', 400], ['biber', 200], ['havuç', 100], ['soğan', 100], ['sıvı yağ', 25]],
-    ['Tavuğu ince şeritler halinde doğrayıp mühürleyin.', 'Sebzeleri julienne doğrayıp soteleyin.', 'Erişteyi ayrıca haşlayın.', 'Hepsini tavada birleştirip 3-4 dakika çevirin.', 'Karabiberle tatlandırıp servis edin.']),
-
-  R('etli-karnabahar', 'Etli Karnabahar Yemeği', 55, ['etli', 'sebze'],
-    [['kuşbaşı dana et', 300], ['karnabahar', 800], ['soğan', 100], ['domates salçası', 15], ['sıvı yağ', 25], ['pirinç', 150]],
-    ['Kuşbaşını mühürleyin, soğanla kavurun.', 'Salçayı ekleyip kokusu çıkana kadar kavurun.', 'Çiçeklere ayrılmış karnabaharı ekleyin.', 'Üzerini geçecek kadar sıcak su ekleyip 35 dakika pişirin.', 'Pilav yanında sıcak servis edin.']),
-
-  R('kisir', 'Kısır + Bol Salata', 30, ['vejetaryen', 'pratik', 'tahil'],
-    [['bulgur', 300], ['domates salçası', 20], ['biber salçası', 10], ['soğan', 100], ['maydanoz', 1], ['zeytinyağı', 40], ['limon', 1], ['marul', 100]],
-    ['Bulguru sıcak suyla ıslatıp 20 dakika şişirin.', 'Salçaları, rendelenmiş soğanı ve yağı ekleyin.', 'Limon suyu ve ince kıyılmış maydanozla yoğurun.', 'Tadını tuz ve pul biberle ayarlayın.', 'Marul yapraklarıyla sararak servis edin.']),
-
-  R('etli-bezelye', 'Etli Bezelye Yemeği', 50, ['etli', 'sebze'],
-    [['kuşbaşı dana et', 300], ['dondurulmuş bezelye', 700], ['havuç', 150], ['soğan', 100], ['domates salçası', 15], ['sıvı yağ', 25], ['pirinç', 150]],
-    ['Kuşbaşını mühürleyip soğanla kavurun.', 'Salçayı ekleyin, havuç dilimlerini katın.', 'Bezelyeyi ve sıcak suyu ekleyip 30 dakika pişirin.', 'Tadını tuzla ayarlayın.', 'Pilavla servis edin.']),
-
-  R('lahana-sarma', 'Etli Lahana Sarması', 100, ['etli', 'pratik-degil'],
-    [['lahana', 900], ['dana kıyma', 300], ['pirinç', 200], ['soğan', 150], ['domates salçası', 20], ['sıvı yağ', 50]],
-    ['Lahanayı haşlayıp yapraklarını ayırın.', 'Kıyma, pirinç, soğan ve salçayla iç harcı hazırlayın.', 'Yapraklara harç sarıp tencereye sıkışık dizin.', 'Üzerine su ekleyip ağırlık koyarak 50 dakika pişirin.', 'Limonla servis edin.']),
-];
-
-const BREAKFAST_RECIPES = [
-  R('kahvalti-klasik', 'Klasik Türk Kahvaltısı', 15, ['kahvalti'],
-    [['beyaz peynir', 200], ['zeytin', 100], ['bal', 40], ['ekmek', 1, true], ['domates', 200], ['salatalık', 200], ['tereyağı', 30]],
-    ['Domates ve salatalığı dilimleyin.', 'Peynir ve zeytini tabağa alın.', 'Ekmeği dilimleyin.', 'Bal ve tereyağını servis edin.', 'Çay eşliğinde servis yapın.']),
-
-  R('menemen', 'Menemen', 20, ['kahvalti', 'pratik'],
-    [['yumurta', 6], ['domates', 300], ['biber', 150], ['tereyağı', 30], ['ekmek', 1, true]],
-    ['Biberleri tereyağında kavurun.', 'Rendelenmiş domatesi ekleyip suyu çekene kadar pişirin.', 'Ateşi kısın, çırpılmış yumurtaları ekleyin.', 'Karıştırarak hafif katılaşmasını sağlayın.', 'Taze ekmekle servis edin.']),
-
-  R('haslanmis-yumurta', 'Haşlanmış Yumurta + Peynir', 15, ['kahvalti', 'pratik'],
-    [['yumurta', 4], ['beyaz peynir', 150], ['zeytin', 60], ['ekmek', 1, true], ['domates', 150]],
-    ['Yumurtaları 8 dakika haşlayın.', 'Sebzeleri dilimleyin.', 'Peynir ve zeytini tabağa alın.', 'Ekmeği dilimleyip servis edin.']),
-
-  R('yulaf', 'Yulaf Lapası', 10, ['kahvalti', 'pratik', 'vegan'],
-    [['yulaf', 200], ['süt', 800], ['bal', 30], ['muz', 2]],
-    ['Yulafı sütle 5 dakika pişirin.', 'Kaseye alın.', 'Üzerine bal ekleyin.', 'Muz dilimleriyle süsleyin.']),
-
-  R('tahin-pekmez', 'Tahin-Pekmez + Ekmek', 5, ['kahvalti', 'pratik', 'vegan'],
-    [['tahin', 60], ['pekmez', 60], ['ekmek', 1, true]],
-    ['Tahin ve pekmezi karıştırın.', 'Ekmeği dilimleyin.', 'Karışımı ekmeğin üzerine sürerek servis edin.']),
-
-  R('simit-lor', 'Simit + Lor + Çay', 5, ['kahvalti', 'pratik'],
-    [['simit', 4], ['lor', 200], ['zeytin', 60], ['domates', 150]],
-    ['Simitleri ikiye bölün.', 'Loru simitlerin arasına sürün.', 'Zeytin ve domatesle servis edin.']),
-
-  R('lorlu-tost', 'Lorlu Ballı Tost', 12, ['kahvalti', 'pratik'],
-    [['ekmek', 1], ['lor', 250], ['bal', 30], ['tereyağı', 30]],
-    ['Lor ve balı karıştırın.', 'Karışımı ekmek dilimlerinin arasına sürün.', 'Tereyağlı tavada iki tarafını kızartın.', 'Sıcak servis edin.']),
-];
-
-const ALL_RECIPES = [...DINNER_RECIPES, ...BREAKFAST_RECIPES];
-for (const r of ALL_RECIPES) r.allergens = allergensOf(r);
 
 /* ---------- Porsiyon modeli ---------- */
 function portionFactor(age, gender) {
@@ -249,41 +62,28 @@ function totalPortions(members) {
 }
 
 /* ---------- Maliyet ---------- */
-function recipeCost(recipe) {
-  return recipe.ingredients.reduce((s, [name, qty]) => {
+function recipeCost(recipe, store) {
+  /* Belirli bir markette (veya en uygun market karışımında) tahmini malzeme maliyeti */
+  return recipe.ingredients.reduce((s, [name, qty, optional]) => {
     const ing = ING[name];
-    return s + (ing ? ing.ppu * qty : 0);
+    if (!ing) return s;
+    if (optional && ingAllergens(name).some((a) => state.allergens.has(a))) return s;
+    const st = store || bestStoreFor(name).store;
+    return s + unitPrice(name, st).ppu * qty;
   }, 0);
 }
-function recipeCostPerServing(recipe) {
-  return recipeCost(recipe) / recipe.serves;
-}
 
-/* ---------- Eleme / filtre ---------- */
-const ALLERGEN_OPTIONS = [
-  ['gluten', 'Gluten / Buğday'], ['süt', 'Süt / Laktoz'], ['yumurta', 'Yumurta'],
-  ['susam', 'Susam'], ['balık', 'Balık'], ['kırmızı et', 'Kırmızı Et'], ['tavuk', 'Tavuk'], ['domuz', 'Domuz'],
-];
-const DISLIKE_OPTIONS = ['mantar', 'soğan', 'maydanoz', 'dereotu', 'nane', 'pırasa', 'kereviz', 'bulgur', 'pirinç', 'yoğurt', 'bezelye', 'patlıcan'];
-const MUST_RULES = [
-  { id: 'baklagil2', label: 'Haftada en az 2 baklagil yemeği', tag: 'baklagil', min: 2 },
-  { id: 'balik1', label: 'Haftada en az 1 balık', tag: 'balik', min: 1 },
-  { id: 'corba1', label: 'Haftada en az 1 çorba', tag: 'corba', min: 1 },
-  { id: 'tavuk2', label: 'Haftada en az 2 tavuk yemeği', tag: 'tavuk', min: 2 },
-  { id: 'sebze3', label: 'Sebze ağırlıklı (en az 3 sebze yemeği)', tag: 'sebze', min: 3 },
-  { id: 'tahil2', label: 'Haftada en az 2 pilav / bulgur', tag: 'tahil', min: 2 },
-];
-
-function recipeExcluded(recipe, state) {
+/* ---------- Eleme ---------- */
+function recipeExcluded(recipe, st) {
   const names = recipe.ingredients.map((i) => i[0]);
-  // alerjenler
-  if (recipe.allergens.some((a) => state.allergens.has(a))) return true;
-  // sevilmeyen malzemeler + serbest metin
-  const banned = [...state.dislikes, ...state.excludeFree];
+  if (recipe.allergens.some((a) => st.allergens.has(a))) return true;
+  const banned = [...st.dislikes, ...st.excludeFree];
   return names.some((n) => banned.some((b) => b && n.toLowerCase().includes(b.toLowerCase())));
 }
 
-/* ---------- Plan oluşturma ---------- */
+/* =========================================================
+   PLAN OLUŞTURMA
+   ========================================================= */
 const DAY_NAMES = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
 
 function shuffle(arr) {
@@ -294,87 +94,130 @@ function shuffle(arr) {
   }
   return a;
 }
-
 function satisfiesRules(pick, rules) {
   const counts = {};
   for (const r of pick) for (const t of r.tags) counts[t] = (counts[t] || 0) + 1;
   return rules.every((rule) => (counts[rule.tag] || 0) >= rule.min);
 }
 
-function buildPlan(state) {
-  const P = Math.max(totalPortions(state.members), 1);
+function poolsFor(st) {
+  const byCuisine = (r) => st.cuisine === 'mix' || r.cuisine === st.cuisine;
+  const ok = (r) => byCuisine(r) && !recipeExcluded(r, st);
+  /* Beslenme çantasında evrensel ('mix') tarifler her mutfakta kullanılabilir */
+  const okLb = (r) => (byCuisine(r) || r.cuisine === 'mix') && !recipeExcluded(r, st);
+  return {
+    dinners: RECIPES.filter((r) => r.meal === 'dinner' && ok(r)),
+    breakfasts: RECIPES.filter((r) => r.meal === 'breakfast' && ok(r)),
+    lunches: RECIPES.filter((r) => r.meal === 'lunch' && ok(r)),
+    desserts: RECIPES.filter((r) => r.meal === 'dessert' && ok(r)),
+    lunchboxes: RECIPES.filter((r) => r.meal === 'lunchbox' && okLb(r)),
+    guests: RECIPES.filter((r) => r.meal === 'dinner' && r.guest && ok(r)),
+  };
+}
+
+function buildPlan(st) {
+  const P = Math.max(totalPortions(st.members), 1);
   const scale = P / 4;
-  const activeRules = MUST_RULES.filter((r) => state.mustRules.has(r.id));
+  const homeMembers = st.members.filter((m) => (m.morning || 'ev') === 'ev');
+  const awayMembers = st.members.filter((m) => (m.morning || 'ev') !== 'ev');
+  const awayCount = awayMembers.length;
+  const homeP = homeMembers.reduce((s, m) => s + portionFactor(m.age, m.gender), 0);
+  const homeScale = homeP / 4;
+  const pools = poolsFor(st);
+  const activeRules = MUST_RULES.filter((r) => st.mustRules.has(r.id));
 
-  const dinners = DINNER_RECIPES.filter((r) => !recipeExcluded(r, state));
-  const breakfasts = BREAKFAST_RECIPES.filter((r) => !recipeExcluded(r, state));
-  if (dinners.length < 7) {
-    return { error: 'Eleme kriterleri o kadar kısıtlayıcı ki 7 ayrı akşam yemeği kalmadı. Lütfen bazı elemeleri kaldırın.' };
+  if (pools.dinners.length < 7) {
+    return { error: 'Seçimlerinizle (mutfak + elemeler) 7 ayrı akşam yemeği kalmadı. Farklı bir mutfak deneyin veya bazı elemeleri kaldırın.' };
   }
-  if (breakfasts.length === 0) {
-    return { error: 'Elemelerinizle uygun kahvaltı kalmadı (ekmek/simit gibi temel kahvaltılıklar ekenmiş olabilir). Lütfen bazı elemeleri kaldırın.' };
+  if (pools.breakfasts.length === 0 && homeP > 0) {
+    return { error: 'Elemelerinizle uygun kahvaltı kalmadı. Lütfen bazı elemeleri kaldırın.' };
+  }
+  if (awayCount > 0 && pools.lunchboxes.length === 0) {
+    return { error: 'Seçimlerinizle uygun beslenme çantası önerisi kalmadı. Lütfen bazı elemeleri kaldırın.' };
   }
 
-  const mustFree = state.mustFree.trim().toLowerCase();
+  const mustFree = st.mustFree.trim().toLowerCase();
   const mustFreeOk = (r) => !mustFree || r.ingredients.some(([n]) => n.toLowerCase().includes(mustFree));
   const mustFreeCount = (pick) => pick.filter(mustFreeOk).length;
 
-  const bCheap = [...breakfasts].sort((a, b) => recipeCost(a) - recipeCost(b));
-  const bCycle = [];
-  for (let i = 0; i < 7; i++) bCycle.push(bCheap[i % bCheap.length]);
+  /* Kahvaltı: evde kalan kişiler için (yoksa boş) */
+  let bCycle = [];
+  let breakfastCost = 0;
+  if (homeP > 0) {
+    const bCheap = [...pools.breakfasts].sort((a, b) => recipeCost(a) - recipeCost(b));
+    for (let i = 0; i < 7; i++) bCycle.push(bCheap[i % bCheap.length]);
+    breakfastCost = bCycle.reduce((s, r) => s + recipeCost(r), 0) * homeScale;
+  }
 
-  const breakfastCost = bCycle.reduce((s, r) => s + recipeCost(r), 0) * scale;
+  /* Beslenme çantası: iş/okul gidenler için, kişi başı günlük */
+  let lbCycle = [];
+  let lunchboxCost = 0;
+  if (awayCount > 0) {
+    lbCycle = shuffle(pools.lunchboxes);
+    while (lbCycle.length < 7) lbCycle = lbCycle.concat(shuffle(pools.lunchboxes));
+    lbCycle = lbCycle.slice(0, 7);
+    lunchboxCost = lbCycle.reduce((s, r) => s + recipeCost(r), 0) * awayCount;
+  }
 
-  const mid = (state.budgetMin + state.budgetMax) / 2;
-  let best = null; // {pick, total, score, relaxed}
+  const mid = (st.budgetMin + st.budgetMax) / 2;
+  let best = null;
   let relaxedBest = null;
 
   for (let iter = 0; iter < 600; iter++) {
-    const pick = shuffle(dinners).slice(0, 7);
+    let pick = shuffle(pools.dinners).slice(0, 7);
+    /* Misafir günü: misafir yemeğini ilgili güne sabitle */
+    let guestDayIdx = -1;
+    if (st.guest.enabled && pools.guests.length > 0) {
+      guestDayIdx = st.guest.day;
+      const gr = pools.guests[Math.floor(Math.random() * pools.guests.length)];
+      pick[guestDayIdx] = gr;
+    }
     const ok = satisfiesRules(pick, activeRules);
-    const dinnerCost = pick.reduce((s, r) => s + recipeCost(r), 0) * scale;
-    const total = dinnerCost + breakfastCost;
+    const guestScale = st.guest.enabled ? (P + st.guest.count) / 4 : null;
+    let dinnerCost = 0;
+    pick.forEach((r, i) => {
+      dinnerCost += recipeCost(r) * (guestDayIdx === i ? guestScale : scale);
+    });
+    const total = dinnerCost + breakfastCost + lunchboxCost;
     const score =
       (mustFree ? Math.min(mustFreeCount(pick), 3) * 4 : 0) +
-      new Set(pick.flatMap((r) => r.tags)).size + // çeşitlilik
+      new Set(pick.flatMap((r) => r.tags)).size +
       (ok ? 10 : 0);
-    const inRange = total >= state.budgetMin && total <= state.budgetMax;
-
-    const cand = { pick, total, score, ok, distance: Math.abs(total - mid) };
+    const inRange = total >= st.budgetMin && total <= st.budgetMax;
+    const cand = { pick, total, score, ok, guestDayIdx, distance: Math.abs(total - mid), _in: inRange };
     if (ok) {
-      if (!best || (inRange && best.total < state.budgetMin) || (inRange && !best._in) || (inRange === best._in && cand.distance < best.distance)) {
-        cand._in = inRange;
-        best = cand;
-      }
-      if (!best._in) best = cand; // ilk uygun
-      if (best._in && inRange && cand.distance < best.distance) best = cand;
+      if (!best) best = cand;
+      else if (inRange && !best._in) best = cand;
+      else if (inRange === best._in && cand.distance < best.distance) best = cand;
     } else if (!relaxedBest || cand.distance < relaxedBest.distance) {
       relaxedBest = cand;
     }
   }
 
-  let chosen;
-  let relaxed = false;
-  if (best) chosen = best;
-  else { chosen = relaxedBest; relaxed = true; }
-
+  let chosen = best || relaxedBest;
   const plan = DAY_NAMES.map((day, i) => ({
     day,
-    breakfast: bCycle[i],
+    breakfast: homeP > 0 ? bCycle[i] : null,
+    lunchbox: awayCount > 0 ? lbCycle[i] : null,
     dinner: chosen.pick[i],
+    guest: chosen.guestDayIdx === i,
+    guestScale: chosen.guestDayIdx === i && st.guest.enabled ? (P + st.guest.count) / 4 : null,
   }));
 
   return {
     plan,
     scale,
+    homeScale,
+    awayCount,
     portions: P,
     total: chosen.total,
-    budgetMin: state.budgetMin,
-    budgetMax: state.budgetMax,
+    budgetMin: st.budgetMin,
+    budgetMax: st.budgetMax,
     rulesSatisfied: chosen.ok,
-    relaxed,
+    relaxed: !best,
     mustFreeApplied: !!mustFree && mustFreeCount(chosen.pick) >= 2,
-    mustFreeName: state.mustFree.trim(),
+    mustFreeName: st.mustFree.trim(),
+    pools,
   };
 }
 
@@ -385,47 +228,45 @@ function roundQty(qty, unit) {
   return Math.max(1, Math.round(qty));
 }
 
-function buildShoppingList(planResult) {
-  const totals = {}; // name -> {qty, unit, cat}
+function buildShoppingList(pr) {
+  const totals = {};
   const add = (recipe, scale) => {
     for (const [name, qty, optional] of recipe.ingredients) {
       const ing = ING[name];
       if (!ing) continue;
-      /* Opsiyonel servis malzemeleri (ör. ekmek) alerjen dışıysa listeye alınmaz */
       if (optional && ingAllergens(name).some((a) => state.allergens.has(a))) continue;
       if (!totals[name]) totals[name] = { qty: 0, unit: ing.unit, cat: ing.cat };
       totals[name].qty += qty * scale;
     }
   };
-  for (const day of planResult.plan) {
-    add(day.breakfast, planResult.scale);
-    add(day.dinner, planResult.scale);
+  for (const day of pr.plan) {
+    if (day.breakfast) add(day.breakfast, pr.homeScale != null ? pr.homeScale : pr.scale);
+    add(day.dinner, day.guestScale || pr.scale);
+    if (day.lunchbox) add(day.lunchbox, pr.awayCount || 1);
+    if (state.extras.lunches[day.day]) add(state.extras.lunches[day.day], pr.scale);
+    if (state.extras.desserts[day.day]) add(state.extras.desserts[day.day], pr.scale);
   }
   const items = Object.entries(totals).map(([name, t]) => {
     const qty = roundQty(t.qty, t.unit);
-    const store = CAT_STORE[t.cat] || 'Lidl';
+    const best = bestStoreFor(name);
     return {
-      name,
-      qty,
-      unit: t.unit,
-      cat: t.cat,
-      store,
-      price: qty * ING[name].ppu,
-      checked: false,
+      name, qty, unit: t.unit, cat: t.cat,
+      store: best.store, ppu: best.ppu, real: best.real, date: best.date,
+      price: qty * best.ppu,
+      checked: state.checked.has(name),
     };
   });
   items.sort((a, b) => a.store.localeCompare(b.store, 'tr') || a.cat.localeCompare(b.cat, 'tr') || a.name.localeCompare(b.name, 'tr'));
 
   const byStore = {};
-  for (const it of items) {
-    (byStore[it.store] = byStore[it.store] || []).push(it);
-  }
+  for (const it of items) (byStore[it.store] = byStore[it.store] || []).push(it);
   const grandTotal = items.reduce((s, i) => s + i.price, 0);
+  const realCount = items.filter((i) => i.real).length;
   const storeTotals = {};
   for (const [store, storeItems] of Object.entries(byStore)) {
     storeTotals[store] = storeItems.reduce((s, i) => s + i.price, 0);
   }
-  return { items, byStore, grandTotal, storeTotals };
+  return { items, byStore, grandTotal, storeTotals, realCount };
 }
 
 /* ---------- Biçimlendirme ---------- */
@@ -436,14 +277,28 @@ const fmtQty = (it) => {
   if (it.unit === 'tutam') return `${it.qty} tutam`;
   return `${it.qty} tk`;
 };
+const TR_MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+function fmtDate(ym) {
+  if (!ym || ym.length < 7) return '';
+  const [y, m] = ym.split('-');
+  return `${TR_MONTHS[parseInt(m, 10) - 1]} ${y}`;
+}
+const cuisineName = (id) => (CUISINES.find((c) => c.id === id) || {}).name || id;
+/* Gluten alerjisi aktifse opsiyonel ekmekli yemeklerin adından ekmeği düşür */
+const displayName = (recipe) => {
+  if (!state.allergens.has('gluten')) return recipe.name;
+  const optBread = recipe.ingredients.some(([n, , opt]) => opt && /ekmek/i.test(n));
+  return optBread ? recipe.name.replace(/\s*\+\s*Ekmek/i, '') : recipe.name;
+};
 
 /* =========================================================
    UYGULAMA DURUMU & ARAYÜZ
    ========================================================= */
 const state = {
+  cuisine: 'tr',
   members: [
-    { age: 35, gender: 'e' },
-    { age: 33, gender: 'k' },
+    { age: 35, gender: 'e', morning: 'ev' },
+    { age: 33, gender: 'k', morning: 'ev' },
   ],
   budgetMin: 45,
   budgetMax: 90,
@@ -452,10 +307,12 @@ const state = {
   excludeFree: [],
   mustRules: new Set(['baklagil2', 'corba1']),
   mustFree: '',
+  guest: { enabled: false, day: 5, count: 2 },
   step: 1,
   planResult: null,
   shopping: null,
   checked: new Set(),
+  extras: { lunches: {}, desserts: {} },
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -471,11 +328,11 @@ function toast(msg) {
   t.textContent = msg;
   t.hidden = false;
   clearTimeout(t._h);
-  t._h = setTimeout(() => { t.hidden = true; }, 3200);
+  t._h = setTimeout(() => { t.hidden = true; }, 3600);
 }
 
 /* ---------- Stepper ---------- */
-const STEP_TITLES = ['Hane', 'Bütçe', 'Eleme', 'Şartlar'];
+const STEP_TITLES = ['Mutfağı', 'Hane', 'Bütçe', 'Eleme', 'Şartlar'];
 function renderStepper() {
   const s = $('#stepper');
   s.innerHTML = '';
@@ -483,6 +340,22 @@ function renderStepper() {
     const li = el('li', state.step > i + 1 ? 'is-done' : state.step === i + 1 ? 'is-active' : '');
     li.innerHTML = `<span>${i + 1}. ${t}</span>`;
     s.appendChild(li);
+  });
+}
+
+/* ---------- Mutfaqı kartları ---------- */
+function renderCuisines() {
+  const grid = $('#cuisine-grid');
+  grid.innerHTML = '';
+  CUISINES.forEach((c) => {
+    const card = el('button', 'cuisine-card' + (state.cuisine === c.id ? ' is-selected' : ''));
+    card.type = 'button';
+    card.setAttribute('role', 'radio');
+    card.setAttribute('aria-checked', state.cuisine === c.id ? 'true' : 'false');
+    card.setAttribute('data-testid', `card-cuisine-${c.id}`);
+    card.innerHTML = `<span class="cuisine-name">${c.name}</span><span class="cuisine-desc">${c.desc}</span>`;
+    card.addEventListener('click', () => { state.cuisine = c.id; renderCuisines(); });
+    grid.appendChild(card);
   });
 }
 
@@ -510,6 +383,19 @@ function renderMembers() {
     gSel.addEventListener('change', () => { m.gender = gSel.value; updatePortionNote(); });
     gField.appendChild(gSel);
 
+    const mField = el('label', 'field field-morning');
+    mField.innerHTML = `<span>Sabah programı</span>`;
+    const mSel = el('select');
+    mSel.setAttribute('data-testid', `select-morning-${idx}`);
+    mSel.setAttribute('aria-label', `${idx + 1}. kişinin sabah programı`);
+    const mVal = m.morning || 'ev';
+    mSel.innerHTML = `
+      <option value="ev"${mVal === 'ev' ? ' selected' : ''}>Evde kahvaltı</option>
+      <option value="is"${mVal === 'is' ? ' selected' : ''}>İş — beslenme</option>
+      <option value="okul"${mVal === 'okul' ? ' selected' : ''}>Okul — beslenme</option>`;
+    mSel.addEventListener('change', () => { m.morning = mSel.value; updatePortionNote(); });
+    mField.appendChild(mSel);
+
     const rm = el('button', 'btn btn-remove', 'Kaldır');
     rm.type = 'button';
     rm.setAttribute('data-testid', `button-remove-member-${idx}`);
@@ -520,7 +406,7 @@ function renderMembers() {
       renderMembers();
     });
 
-    row.append(ageField, gField, rm);
+    row.append(ageField, gField, mField, rm);
     list.appendChild(row);
   });
   updatePortionNote();
@@ -563,31 +449,39 @@ function renderAllChips() {
   }, false);
 }
 
+/* ---------- Misafir bölümü ---------- */
+function renderGuestFields() {
+  const sel = $('#guest-day');
+  sel.innerHTML = DAY_NAMES.map((d, i) => `<option value="${i}"${state.guest.day === i ? ' selected' : ''}>${d}</option>`).join('');
+  $('#guest-count').value = state.guest.count;
+  $('#guest-fields').hidden = !state.guest.enabled;
+}
+
 /* ---------- Sihirbaz gezinme ---------- */
 function showStep(n) {
   state.step = n;
   document.querySelectorAll('.wizard-step').forEach((s) => { s.hidden = Number(s.dataset.step) !== n; });
   $('#btn-prev').hidden = n === 1;
-  $('#btn-next').textContent = n === 4 ? 'Planı Oluştur' : 'Devam';
+  $('#btn-next').textContent = n === 5 ? 'Planı Oluştur' : 'Devam';
   renderStepper();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function nextStep() {
-  if (state.step === 1) {
-    if (state.members.length === 0) { toast('En az bir kişi ekleyin.'); return; }
-  }
-  if (state.step === 2) {
+  if (state.step === 3) {
     const mn = parseFloat($('#budget-min').value);
     const mx = parseFloat($('#budget-max').value);
     if (!(mn >= 10 && mx >= 10 && mn <= mx)) { toast('Geçerli bir bütçe aralığı girin (alt ≤ üst).'); return; }
     state.budgetMin = mn; state.budgetMax = mx;
   }
-  if (state.step === 3) {
+  if (state.step === 4) {
     state.excludeFree = $('#exclude-free').value.split(',').map((s) => s.trim()).filter(Boolean);
   }
-  if (state.step === 4) {
+  if (state.step === 5) {
     state.mustFree = $('#must-free').value;
+    state.guest.enabled = $('#guest-enabled').checked;
+    state.guest.day = parseInt($('#guest-day').value, 10);
+    state.guest.count = Math.max(1, parseInt($('#guest-count').value, 10) || 2);
     generateAndShow();
     return;
   }
@@ -600,7 +494,7 @@ function generateAndShow() {
   if (result.error) { toast(result.error); return; }
   state.planResult = result;
   state.checked = new Set();
-  state.shopping = buildShoppingList(result);
+  state.extras = { lunches: {}, desserts: {} };
   renderResults();
   $('#wizard').hidden = true;
   $('#results').hidden = false;
@@ -612,37 +506,57 @@ function generateAndShow() {
   }
 }
 
+function currentTotal() {
+  const pr = state.planResult;
+  if (!pr) return 0;
+  let t = pr.total;
+  for (const d of pr.plan) {
+    if (state.extras.lunches[d.day]) t += recipeCost(state.extras.lunches[d.day]) * pr.scale;
+    if (state.extras.desserts[d.day]) t += recipeCost(state.extras.desserts[d.day]) * pr.scale;
+  }
+  return t;
+}
+
 function tagPill(tag) {
-  const labels = { vegan: 'Vegan', vejetaryen: 'Vejetaryen', balik: 'Balık', pratik: 'Pratik', corba: 'Çorba', baklagil: 'Baklagil', tahil: 'Pilav/Bulgur', makarna: 'Makarna', etli: 'Etli', tavuk: 'Tavuk', sebze: 'Sebze' };
+  const labels = {
+    vegan: 'Vegan', vejetaryen: 'Vejetaryen', balik: 'Balık', pratik: 'Pratik', corba: 'Çorba',
+    baklagil: 'Baklagil', tahil: 'Pilav/Bulgur', makarna: 'Makarna', etli: 'Etli', tavuk: 'Tavuk',
+    sebze: 'Sebze', misafir: 'Misafir', firin: 'Fırın', kahvalti: 'Kahvalti', lunch: 'Öğle',
+  };
   return labels[tag] ? `<span class="tag t-${tag}">${labels[tag]}</span>` : '';
 }
 
 function renderResults() {
   const r = state.planResult;
+  state.shopping = buildShoppingList(r);
   const s = state.shopping;
+  const total = currentTotal();
 
   /* Özet */
+  const awayLine = r.awayCount > 0
+    ? ` · ${r.awayCount} kişi için günlük beslenme çantası`
+    : '';
   $('#results-summary').innerHTML = `
-    <h2>Haftalık Planınız hazır</h2>
-    <p>${state.members.length} kişi · ${r.portions.toFixed(1).replace('.', ',')} porsiyon ·
-    tahmini toplam <strong>${fmtEur(r.total)}</strong>
+    <h2>Haftalık planınız hazır</h2>
+    <p>${cuisineName(state.cuisine)} · ${state.members.length} kişi · ${r.portions.toFixed(1).replace('.', ',')} porsiyon${awayLine} ·
+    tahmini toplam <strong>${fmtEur(total)}</strong>
     (bütçe aralığınız ${fmtEur(r.budgetMin)} – ${fmtEur(r.budgetMax)})</p>`;
 
-  /* Plan paneli */
+  /* ---------- PLAN PANELİ ---------- */
   const planPanel = $('#panel-plan');
   planPanel.innerHTML = '';
 
   const barWrap = el('div', 'budget-bar-wrap');
-  const spanMax = Math.max(r.budgetMax * 1.12, r.total * 1.05);
+  const spanMax = Math.max(r.budgetMax * 1.12, total * 1.05);
   const bandL = (r.budgetMin / spanMax) * 100;
   const bandR = (r.budgetMax / spanMax) * 100;
-  const fillW = Math.min(100, (r.total / spanMax) * 100);
+  const fillW = Math.min(100, (total / spanMax) * 100);
   barWrap.innerHTML = `
     <div class="budget-bar-top">
-      <span class="budget-total">${fmtEur(r.total)}</span>
-      <span class="budget-range">Bütçe aralığı: ${fmtEur(r.budgetMin)} – ${fmtEur(r.budgetMax)}</span>
+      <span class="budget-total">${fmtEur(total)}</span>
+      <span class="budget-range">Bütçe aralığı: ${fmtEur(r.budgetMin)} – ${fmtEur(r.budgetMax)} · öğle/tatlı eklemeleri dahil</span>
     </div>
-    <div class="budget-track" role="img" aria-label="Toplam maliyet ${fmtEur(r.total)}, bütçe aralığı ${fmtEur(r.budgetMin)} ile ${fmtEur(r.budgetMax)} arasında">
+    <div class="budget-track" role="img" aria-label="Toplam maliyet ${fmtEur(total)}, bütçe aralığı ${fmtEur(r.budgetMin)} ile ${fmtEur(r.budgetMax)} arasında">
       <div class="budget-range-band" style="left:${bandL}%; width:${Math.max(bandR - bandL, 0.5)}%"></div>
       <div class="budget-fill" style="width:${fillW}%"></div>
     </div>`;
@@ -651,42 +565,72 @@ function renderResults() {
   const notes = [];
   if (r.mustFreeApplied) notes.push(`"${r.mustFreeName}" içeren en az 2 yemek plana alındı.`);
   if (!r.rulesSatisfied) notes.push('Bazı şartlar eleme kurallarıyla çakıştığı için uygulanamadı.');
-  if (notes.length) {
-    const n = el('p', 'step-hint', notes.join(' '));
-    planPanel.appendChild(n);
-  }
+  if (notes.length) planPanel.appendChild(el('p', 'step-hint', notes.join(' ')));
 
   const grid = el('div', 'week-grid');
   r.plan.forEach((day, i) => {
-    const dayCost = (recipeCost(day.breakfast) + recipeCost(day.dinner)) * r.scale;
+    const bScale = r.homeScale != null ? r.homeScale : r.scale;
+    const bCost = day.breakfast ? recipeCost(day.breakfast) * bScale : 0;
+    const lbCost = day.lunchbox ? recipeCost(day.lunchbox) * (r.awayCount || 1) : 0;
+    const dCost = recipeCost(day.dinner) * (day.guestScale || r.scale);
+    const lCost = state.extras.lunches[day.day] ? recipeCost(state.extras.lunches[day.day]) * r.scale : 0;
+    const dsCost = state.extras.desserts[day.day] ? recipeCost(state.extras.desserts[day.day]) * r.scale : 0;
     const card = el('div', 'day-card');
     card.setAttribute('data-testid', `card-day-${i}`);
     card.innerHTML = `
       <div class="day-card-head">
-        <span class="day-name">${day.day}</span>
-        <span class="day-cost">${fmtEur(dayCost)}</span>
+        <span class="day-name">${day.day}${day.guest ? ' <span class="guest-badge">misafirli</span>' : ''}</span>
+        <span class="day-cost">${fmtEur(bCost + dCost + lCost + dsCost + lbCost)}</span>
       </div>`;
-    for (const [label, meal, cls] of [['Kahvaltı', day.breakfast, 'is-breakfast'], ['Akşam', day.dinner, 'is-dinner']]) {
+
+    const mkMeal = (label, meal, cls) => {
       const slot = el('div', 'meal-slot');
       const lab = el('span', 'meal-label', label);
       const btn = el('button', `meal-card ${cls}`);
       btn.type = 'button';
       btn.setAttribute('data-testid', `button-meal-${i}-${label}`);
+      const perServing = meal.meal === 'lunchbox'
+        ? `${fmtEur(recipeCost(meal))}/kişi`
+        : `${fmtEur(recipeCost(meal) / meal.serves)}/porsiyon`;
       btn.innerHTML = `
-        <span class="meal-name">${meal.name}</span>
-        <span class="meal-meta">${meal.time} dk · ${fmtEur(recipeCostPerServing(meal))}/porsiyon</span>`;
-      btn.addEventListener('click', () => openModal(meal));
+        <span class="meal-name">${displayName(meal)}</span>
+        <span class="meal-meta">${meal.time} dk · ${perServing}</span>`;
+      btn.addEventListener('click', () => openModal(meal, day));
       slot.append(lab, btn);
-      card.appendChild(slot);
+      return slot;
+    };
+
+    if (day.breakfast) card.appendChild(mkMeal('Kahvaltı', day.breakfast, 'is-breakfast'));
+    if (day.lunchbox) card.appendChild(mkMeal('Beslenme (iş/okul)', day.lunchbox, 'is-lunchbox'));
+    card.appendChild(mkMeal('Akşam', day.dinner, 'is-dinner'));
+
+    if (state.extras.lunches[day.day]) {
+      card.appendChild(mkMeal('Öğle', state.extras.lunches[day.day], 'is-lunch'));
     }
+    if (state.extras.desserts[day.day]) {
+      card.appendChild(mkMeal('Tatlı', state.extras.desserts[day.day], 'is-dessert'));
+    }
+
+    const extraRow = el('div', 'extra-row');
+    const lunchBtn = el('button', 'btn btn-ghost btn-sm', state.extras.lunches[day.day] ? 'Öğle kaldır' : '+ Öğle yemeği');
+    lunchBtn.type = 'button';
+    lunchBtn.setAttribute('data-testid', `button-lunch-${i}`);
+    lunchBtn.addEventListener('click', () => toggleExtra('lunches', day.day));
+    const dessertBtn = el('button', 'btn btn-ghost btn-sm', state.extras.desserts[day.day] ? 'Tatlı kaldır' : '+ Tatlı');
+    dessertBtn.type = 'button';
+    dessertBtn.setAttribute('data-testid', `button-dessert-${i}`);
+    dessertBtn.addEventListener('click', () => toggleExtra('desserts', day.day));
+    extraRow.append(lunchBtn, dessertBtn);
+    card.appendChild(extraRow);
+
     grid.appendChild(card);
   });
   planPanel.appendChild(grid);
 
-  /* Alışveriş paneli */
+  /* ---------- ALIŞVERİŞ PANELİ ---------- */
   const shopPanel = $('#panel-shopping');
   shopPanel.innerHTML = '';
-  const storeOrder = Object.keys(STORES).filter((st) => s.byStore[st]);
+  const storeOrder = STORE_LIST.filter((st) => s.byStore[st]);
   for (const store of storeOrder) {
     const storeItems = s.byStore[store];
     const sec = el('section', 'store-section');
@@ -700,64 +644,89 @@ function renderResults() {
       <span class="store-sub">${storeItems.length} ürün</span>
       <span class="store-total">${fmtEur(s.storeTotals[store])}</span>`;
     const body = el('div', 'store-body');
-    const addItems = () => {
-      body.innerHTML = '';
-      storeItems.forEach((it) => {
-        const key = it.name;
-        const row = el('div', 'shop-item' + (state.checked.has(key) ? ' is-checked' : ''));
-        row.setAttribute('data-testid', `row-item-${it.name}`);
-        const id = `chk-${it.name.replace(/\s+/g, '-')}`;
-        row.innerHTML = `
-          <label for="${id}">
-            <input type="checkbox" id="${id}"${state.checked.has(key) ? ' checked' : ''}>
-            <span class="shop-item-name">${it.name}<span class="shop-item-qty"> — ${fmtQty(it)}</span></span>
-          </label>
-          <span class="shop-item-meta"></span>
-          <span class="shop-item-price">${fmtEur(it.price)}</span>`;
-        const chk = row.querySelector('input');
-        chk.addEventListener('change', () => {
-          chk.checked ? state.checked.add(key) : state.checked.delete(key);
-          row.classList.toggle('is-checked', chk.checked);
-        });
-        body.appendChild(row);
+    storeItems.forEach((it) => {
+      const row = el('div', 'shop-item' + (it.checked ? ' is-checked' : ''));
+      row.setAttribute('data-testid', `row-item-${it.name}`);
+      const id = `chk-${it.name.replace(/\s+/g, '-')}`;
+      row.innerHTML = `
+        <label for="${id}">
+          <input type="checkbox" id="${id}"${it.checked ? ' checked' : ''}>
+          <span class="shop-item-name">${it.name}<span class="shop-item-qty"> — ${fmtQty(it)}</span></span>
+        </label>
+        <span class="shop-item-meta">${it.real ? `<span class="price-badge is-real" title="Open Prices topluluk verisi, ${fmtDate(it.date)}">gerçek ${fmtDate(it.date)}</span>` : '<span class="price-badge">tahmini</span>'}</span>
+        <span class="shop-item-price">${fmtEur(it.price)}</span>`;
+      const chk = row.querySelector('input');
+      chk.addEventListener('change', () => {
+        chk.checked ? state.checked.add(it.name) : state.checked.delete(it.name);
+        row.classList.toggle('is-checked', chk.checked);
       });
-    };
+      body.appendChild(row);
+    });
     head.addEventListener('click', () => {
       const open = body.hidden;
       body.hidden = !open;
       head.setAttribute('aria-expanded', String(open));
     });
-    addItems();
     sec.append(head, body);
     shopPanel.appendChild(sec);
   }
-  const foot = el('p', 'shopping-footnote',
-    `Tahmini toplam: ${fmtEur(s.grandTotal)} · Fiyatlar Almanya ortalaması bazında tahminidir, mağazaya ve sezona göre değişebilir.`);
-  shopPanel.appendChild(foot);
+  const realPct = s.items.length ? Math.round((s.realCount / s.items.length) * 100) : 0;
+  shopPanel.appendChild(el('p', 'shopping-footnote',
+    `Tahmini toplam: ${fmtEur(s.grandTotal)} · Kalemlerin %${realPct}'i gerçek market fiyatları (Open Prices topluluk verisi, son 12 ay medyanı), kalanı tahmini. Mağazaya ve sezona göre değişebilir.`));
 
-  /* Karşılaştırma paneli */
+  /* ---------- KARŞILAŞTIRMA PANELİ ---------- */
   const cmpPanel = $('#panel-compare');
   cmpPanel.innerHTML = '';
-  const cmpNote = el('p', 'compare-note',
-    'Aynı sepetin tamamı farklı marketlerde alınırsa tahmini maliyeti aşağıda. "En uygun" market tek seferde her şeyi almak isteyenler için; listenizde her market kendi en güç olduğu reyonlardan seçildi.');
-  cmpPanel.appendChild(cmpNote);
-  const rows = Object.entries(STORES)
-    .map(([store, cfg]) => ({ store, total: s.items.reduce((sum, it) => sum + it.price * cfg.factor, 0) }))
+  cmpPanel.appendChild(el('p', 'compare-note',
+    'Aynı sepetin tamamı tek bir markette alınırsa tahmini maliyeti aşağıda. "En uygun" market tek seferde her şeyi almak isteyenler için. Alışveriş listesinde her kalem, gerçek fiyatı olan marketten seçilir.'));
+  const rows = STORE_LIST
+    .map((store) => {
+      let tot = 0, realN = 0;
+      for (const it of s.items) {
+        const p = unitPrice(it.name, store);
+        tot += p.ppu * it.qty;
+        if (p.real) realN++;
+      }
+      return { store, total: tot, realN };
+    })
     .sort((a, b) => a.total - b.total);
-  const best = rows[0].store;
+  const bestStore = rows[0].store;
   const wrap = el('div', 'compare-wrap');
   const table = el('table', 'compare-table');
   table.setAttribute('data-testid', 'table-compare');
   table.innerHTML = `
-    <thead><tr><th>Market</th><th>Tahmini sepet</th><th>Fark</th></tr></thead>
+    <thead><tr><th>Market</th><th>Tahmini sepet</th><th>Gerçek fiyat</th><th>Fark</th></tr></thead>
     <tbody>${rows.map((row) => `
-      <tr${row.store === best ? ' class="is-best"' : ''}>
-        <td>${row.store}${row.store === best ? '<span class="badge-best">En uygun</span>' : ''}</td>
+      <tr${row.store === bestStore ? ' class="is-best"' : ''}>
+        <td>${row.store}${row.store === bestStore ? '<span class="badge-best">En uygun</span>' : ''}</td>
         <td>${fmtEur(row.total)}</td>
-        <td>${row.store === best ? '—' : '+' + fmtEur(row.total - rows[0].total)}</td>
+        <td>${row.realN}/${s.items.length} kalem</td>
+        <td>${row.store === bestStore ? '—' : '+' + fmtEur(row.total - rows[0].total)}</td>
       </tr>`).join('')}</tbody>`;
   wrap.appendChild(table);
   cmpPanel.appendChild(wrap);
+  cmpPanel.appendChild(el('p', 'shopping-footnote',
+    "Gerçek fiyatlar Open Prices (prices.openfoodfacts.org) topluluk verilerinden; 2025 başından bu yana Almanya'da kaydedilmiş fiyatların market bazındaki medyanıdır."));
+}
+
+/* ---------- Öğle / tatlı ekleme ---------- */
+function toggleExtra(kind, dayName) {
+  const pr = state.planResult;
+  if (state.extras[kind][dayName]) {
+    delete state.extras[kind][dayName];
+    renderResults();
+    return;
+  }
+  const pool = kind === 'lunches' ? pr.pools.lunches : pr.pools.desserts;
+  if (!pool.length) {
+    toast(kind === 'lunches' ? 'Seçimlerinizle uygun öğle yemeği kalmadı (eleme çok kısıtlayıcı).' : 'Seçimlerinizle uygun tatlı kalmadı.');
+    return;
+  }
+  const used = Object.values(state.extras[kind]);
+  let candidates = pool.filter((r) => !used.includes(r));
+  if (!candidates.length) candidates = pool;
+  state.extras[kind][dayName] = candidates[Math.floor(Math.random() * candidates.length)];
+  renderResults();
 }
 
 /* ---------- Sekmeler ---------- */
@@ -767,17 +736,20 @@ function switchTab(name) {
 }
 
 /* ---------- Tarif modalı ---------- */
-function openModal(recipe) {
+const MEAL_LABELS = { dinner: 'Akşam yemeği', breakfast: 'Kahvaltı', lunch: 'Öğle yemeği', dessert: 'Tatlı', lunchbox: 'Beslenme çantası' };
+function openModal(recipe, day) {
   const r = state.planResult;
-  const scale = r ? r.scale : 1;
-  const cost = recipeCost(recipe) * scale;
+  const isLb = recipe.meal === 'lunchbox';
+  const scale = isLb ? 1 : (day && day.guestScale ? day.guestScale : r.scale);
+  const cost = recipeCost(recipe) * (isLb ? (r.awayCount || 1) : scale);
+  const perLabel = isLb ? `${fmtEur(recipeCost(recipe))}/kişi` : `${fmtEur(recipeCost(recipe) / recipe.serves)}/porsiyon`;
   const modal = $('#modal-inner');
   modal.innerHTML = `
     <button type="button" class="modal-close" data-testid="button-modal-close" aria-label="Kapat">Kapat ✕</button>
-    <h3 id="modal-title">${recipe.name}</h3>
-    <p class="modal-sub">${recipe.time} dk · ${fmtEur(recipeCostPerServing(recipe))}/porsiyon · hane için: ${fmtEur(cost)} (${recipe.serves} kişilik tarif × ${scale.toFixed(2).replace('.', ',')} ölçek)</p>
-    <div class="tag-row">${recipe.tags.filter((t) => t !== 'kahvalti' && t !== 'pratik-degil').map(tagPill).join('')}</div>
-    <h4>Malzemeler (haneye göre ölçekli)</h4>
+    <h3 id="modal-title">${displayName(recipe)}</h3>
+    <p class="modal-sub">${MEAL_LABELS[recipe.meal]} · ${cuisineName(recipe.cuisine)} · ${recipe.time} dk · ${perLabel} · hane için: ${fmtEur(cost)}</p>
+    <div class="tag-row">${recipe.tags.filter((t) => !['kahvalti', 'lunch'].includes(t)).map(tagPill).join('')}</div>
+    <h4>${isLb ? 'Malzemeler (kişi başı)' : 'Malzemeler (haneye göre ölçekli)'}</h4>
     <ul class="ingredients">${recipe.ingredients.map(([name, qty]) => {
       const ing = ING[name];
       const q = roundQty(qty * scale, ing.unit);
@@ -809,16 +781,22 @@ $('#btn-edit-setup').addEventListener('click', () => {
   $('#wizard').hidden = false;
   showStep(1);
 });
+$('#guest-enabled').addEventListener('change', (e) => {
+  state.guest.enabled = e.target.checked;
+  renderGuestFields();
+});
+$('#guest-day').addEventListener('change', (e) => { state.guest.day = parseInt(e.target.value, 10); });
+$('#guest-count').addEventListener('input', (e) => { state.guest.count = Math.max(1, parseInt(e.target.value, 10) || 2); });
 document.querySelectorAll('.nav-tab').forEach((t) => {
   t.addEventListener('click', () => switchTab(t.dataset.resultsTab));
 });
 $('#modal').addEventListener('click', (e) => { if (e.target === $('#modal')) closeModal(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
-$('#budget-min').addEventListener('input', () => {});
-$('#budget-max').addEventListener('input', () => {});
 
 /* ---------- Başlat ---------- */
 renderStepper();
+renderCuisines();
 renderMembers();
 renderAllChips();
+renderGuestFields();
 showStep(1);

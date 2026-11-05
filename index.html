@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mutfak Planı — Haftalık Yemek ve Alışveriş Planlayıcı</title>
-<meta name="description" content="Hane halkına, bütçeye ve alerjilere göre haftalık yemek planı, tarifler ve market-market alışveriş listesi oluşturur.">
+<meta name="description" content="Mutfağını, hane halkını, bütçenizi ve alerjilerinizi seçin; haftalık yemek planı, tarifler ve gerçek market fiyatlarıyla alışveriş listesi oluşsun.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@300..700&display=swap" rel="stylesheet">
@@ -38,17 +38,24 @@
     <div class="wizard-card">
       <ol class="stepper" id="stepper" aria-hidden="true"></ol>
 
-      <!-- STEP 1: HANE HALKI -->
+      <!-- STEP 1: MUTFAK -->
       <div class="wizard-step" data-step="1">
+        <h2>Hangi mutfaktan planlayalım?</h2>
+        <p class="step-hint">Kahvaltı, akşam yemekleri, öğle seçenekleri ve tatlılar seçtiğiniz mutfağa göre özelleşir.</p>
+        <div class="cuisine-grid" id="cuisine-grid" role="radiogroup" aria-label="Mutfak seçimi"></div>
+      </div>
+
+      <!-- STEP 2: HANE HALKI -->
+      <div class="wizard-step" data-step="2" hidden>
         <h2>Hanenizde kimler yemek yiyecek?</h2>
-        <p class="step-hint">Yaş ve cinsiyet, porsiyon ve malzeme miktarlarını otomatik hesaplamak için kullanılır.</p>
+        <p class="step-hint">Yaş ve cinsiyet, porsiyon ve malzeme miktarlarını otomatik hesaplamak için kullanılır. Sabah işe veya okula gidenler için günlük beslenme çantası önerilir; kahvaltı sadece evde kalanlar için planlanır.</p>
         <div id="members-list" class="members-list"></div>
         <button type="button" class="btn btn-outline" id="btn-add-member" data-testid="button-add-member">+ Kişi ekle</button>
         <p class="portion-note" id="portion-note" data-testid="text-portion-note"></p>
       </div>
 
-      <!-- STEP 2: BÜTÇE -->
-      <div class="wizard-step" data-step="2" hidden>
+      <!-- STEP 3: BÜTÇE -->
+      <div class="wizard-step" data-step="3" hidden>
         <h2>Haftalık bütçeniz nedir?</h2>
         <p class="step-hint">Kahvaltı ve akşam yemeği için tahmini toplam harcama aralığı (malzemeler dahil).</p>
         <div class="budget-inputs">
@@ -71,8 +78,8 @@
         <p class="step-hint small">İpucu: 4 kişilik bir hanede kahvaltı + akşam yemeği için tipik aralık 60–110 € arasıdır. Plan, aralığın ortasına yakın bir maliyetle oluşturulur.</p>
       </div>
 
-      <!-- STEP 3: ELEME -->
-      <div class="wizard-step" data-step="3" hidden>
+      <!-- STEP 4: ELEME -->
+      <div class="wizard-step" data-step="4" hidden>
         <h2>Neleri eleyelim?</h2>
         <p class="step-hint">Alerjiniz olan, asla yenmesini istemediğiniz veya hoşlanmadığınız her şeyi seçin.</p>
         <h3 class="chip-group-title">Alerjenler ve büyük gruplar</h3>
@@ -86,8 +93,8 @@
         </div>
       </div>
 
-      <!-- STEP 4: ŞARTLAR -->
-      <div class="wizard-step" data-step="4" hidden>
+      <!-- STEP 5: ŞARTLAR + MİSAFİR -->
+      <div class="wizard-step" data-step="5" hidden>
         <h2>Mutlaka olmasını istedikleriniz?</h2>
         <p class="step-hint">Haftalık planda garanti edilmesini istediğiniz kuralları seçin.</p>
         <div class="chip-group" id="must-chips"></div>
@@ -95,6 +102,25 @@
         <div class="field">
           <input type="text" id="must-free" placeholder="Örn: mercimek, tavuk, ıspanak…" data-testid="input-must-free">
           <span class="field-help">Bu malzemeyi içeren en az 2 yemek plana alınır (mümkünse).</span>
+        </div>
+
+        <h3 class="chip-group-title">Misafir menüsü</h3>
+        <div class="guest-box" id="guest-box">
+          <label class="guest-toggle">
+            <input type="checkbox" id="guest-enabled" data-testid="checkbox-guest">
+            <span>Bu hafta misafirimiz gelecek</span>
+          </label>
+          <div class="guest-fields" id="guest-fields" hidden>
+            <label class="field">
+              <span>Gün</span>
+              <select id="guest-day" data-testid="select-guest-day"></select>
+            </label>
+            <label class="field">
+              <span>Misafir sayısı</span>
+              <input type="number" id="guest-count" min="1" max="12" value="2" data-testid="input-guest-count">
+            </label>
+            <p class="field-help">Seçilen güne daha gösterişli bir "misafir yemeği" konur ve malzemeler misafir sayısına göre artırılır.</p>
+          </div>
         </div>
       </div>
 
@@ -116,13 +142,8 @@
       </div>
     </div>
 
-    <!-- PLAN TAB -->
     <div class="results-tab" data-results-panel="plan" id="panel-plan"></div>
-
-    <!-- SHOPPING TAB -->
     <div class="results-tab" data-results-panel="shopping" id="panel-shopping" hidden></div>
-
-    <!-- COMPARE TAB -->
     <div class="results-tab" data-results-panel="compare" id="panel-compare" hidden></div>
   </section>
 </main>
@@ -134,6 +155,8 @@
 
 <div class="toast" id="toast" role="status" hidden></div>
 
+<script src="./data.js" defer></script>
+<script src="./prices-data.js" defer></script>
 <script src="./app.js" defer></script>
 </body>
 </html>
