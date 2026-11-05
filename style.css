@@ -670,7 +670,21 @@
 }
 .compare-table {
   font-size: var(--text-sm);
-  min-width: 560px;
+  min-width: 420px;
+}
+@media (max-width: 480px) {
+  .compare-table {
+    min-width: 0;
+    font-size: var(--text-xs);
+  }
+  .compare-table th,
+  .compare-table td {
+    padding: var(--space-2);
+  }
+  .compare-table th:nth-child(3),
+  .compare-table td:nth-child(3) {
+    display: none;
+  }
 }
 .compare-table th,
 .compare-table td {

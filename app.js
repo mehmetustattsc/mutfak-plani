@@ -101,11 +101,24 @@ const ALLERGEN_MAP = [
   ['tavuk', ['tavuk göğsü', 'tavuk but']],
 ];
 
-function allergensOf(recipe) {
-  const names = recipe.ingredients.map((i) => i[0]);
+/* Kelime başına göre eşleştirme: 'tuz' ≠ 'un', 'beyaz peynir' = 'peynir' */
+function nameMatchesKey(name, key) {
+  return name === key || name.startsWith(key + ' ') || name.includes(' ' + key) || name.endsWith(' ' + key);
+}
+function ingAllergens(name) {
   const found = [];
   for (const [alg, keys] of ALLERGEN_MAP) {
-    if (names.some((n) => keys.some((k) => n.includes(k)))) found.push(alg);
+    if (keys.some((k) => nameMatchesKey(name, k))) found.push(alg);
+  }
+  return found;
+}
+
+function allergensOf(recipe) {
+  /* Yan servis (opsiyonel) malzemeler alerjen elemesini tetiklemez */
+  const names = recipe.ingredients.filter((i) => !i[2]).map((i) => i[0]);
+  const found = [];
+  for (const [alg, keys] of ALLERGEN_MAP) {
+    if (names.some((n) => keys.some((k) => nameMatchesKey(n, k)))) found.push(alg);
   }
   return found;
 }
@@ -117,7 +130,7 @@ function R(id, name, time, tags, ingredients, steps) {
 
 const DINNER_RECIPES = [
   R('mercimek-corba', 'Kırmızı Mercimek Çorbası + Ekmek', 40, ['corba', 'vegan', 'baklagil', 'tahil'],
-    [['kırmızı mercimek', 300], ['soğan', 100], ['havuç', 100], ['patates', 100], ['domates salçası', 15], ['tereyağı', 25], ['sıvı yağ', 20], ['nane', 1], ['kimyon', 1], ['ekmek', 1]],
+    [['kırmızı mercimek', 300], ['soğan', 100], ['havuç', 100], ['patates', 100], ['domates salçası', 15], ['tereyağı', 25], ['sıvı yağ', 20], ['nane', 1], ['kimyon', 1], ['ekmek', 1, true]],
     ['Mercimeği yıkayın. Soğan, havuç ve patatesi küp doğrayın.', 'Sebzeleri sıvı yağda 3-4 dakika soteleyin, salçayı ekleyip kavurun.', 'Mercimeği ve 1,2 lt suyu ekleyip kısık ateşte 30 dakika pişirin.', 'Blender ile pürüzsüz hale getirin, tereyağı ve kimyonla tatlandırın.', 'Kızarmış ekmek ve kuru nane ile servis edin.']),
 
   R('kuru-fasulye', 'Kuru Fasulye + Pirinç Pilavı', 90, ['baklagil', 'tahil'],
@@ -191,15 +204,15 @@ const DINNER_RECIPES = [
 
 const BREAKFAST_RECIPES = [
   R('kahvalti-klasik', 'Klasik Türk Kahvaltısı', 15, ['kahvalti'],
-    [['beyaz peynir', 200], ['zeytin', 100], ['bal', 40], ['ekmek', 1], ['domates', 200], ['salatalık', 200], ['tereyağı', 30]],
+    [['beyaz peynir', 200], ['zeytin', 100], ['bal', 40], ['ekmek', 1, true], ['domates', 200], ['salatalık', 200], ['tereyağı', 30]],
     ['Domates ve salatalığı dilimleyin.', 'Peynir ve zeytini tabağa alın.', 'Ekmeği dilimleyin.', 'Bal ve tereyağını servis edin.', 'Çay eşliğinde servis yapın.']),
 
   R('menemen', 'Menemen', 20, ['kahvalti', 'pratik'],
-    [['yumurta', 6], ['domates', 300], ['biber', 150], ['tereyağı', 30], ['ekmek', 1]],
+    [['yumurta', 6], ['domates', 300], ['biber', 150], ['tereyağı', 30], ['ekmek', 1, true]],
     ['Biberleri tereyağında kavurun.', 'Rendelenmiş domatesi ekleyip suyu çekene kadar pişirin.', 'Ateşi kısın, çırpılmış yumurtaları ekleyin.', 'Karıştırarak hafif katılaşmasını sağlayın.', 'Taze ekmekle servis edin.']),
 
   R('haslanmis-yumurta', 'Haşlanmış Yumurta + Peynir', 15, ['kahvalti', 'pratik'],
-    [['yumurta', 4], ['beyaz peynir', 150], ['zeytin', 60], ['ekmek', 1], ['domates', 150]],
+    [['yumurta', 4], ['beyaz peynir', 150], ['zeytin', 60], ['ekmek', 1, true], ['domates', 150]],
     ['Yumurtaları 8 dakika haşlayın.', 'Sebzeleri dilimleyin.', 'Peynir ve zeytini tabağa alın.', 'Ekmeği dilimleyip servis edin.']),
 
   R('yulaf', 'Yulaf Lapası', 10, ['kahvalti', 'pratik', 'vegan'],
@@ -207,7 +220,7 @@ const BREAKFAST_RECIPES = [
     ['Yulafı sütle 5 dakika pişirin.', 'Kaseye alın.', 'Üzerine bal ekleyin.', 'Muz dilimleriyle süsleyin.']),
 
   R('tahin-pekmez', 'Tahin-Pekmez + Ekmek', 5, ['kahvalti', 'pratik', 'vegan'],
-    [['tahin', 60], ['pekmez', 60], ['ekmek', 1]],
+    [['tahin', 60], ['pekmez', 60], ['ekmek', 1, true]],
     ['Tahin ve pekmezi karıştırın.', 'Ekmeği dilimleyin.', 'Karışımı ekmeğin üzerine sürerek servis edin.']),
 
   R('simit-lor', 'Simit + Lor + Çay', 5, ['kahvalti', 'pratik'],
@@ -295,8 +308,11 @@ function buildPlan(state) {
 
   const dinners = DINNER_RECIPES.filter((r) => !recipeExcluded(r, state));
   const breakfasts = BREAKFAST_RECIPES.filter((r) => !recipeExcluded(r, state));
-  if (dinners.length < 7 || breakfasts.length === 0) {
+  if (dinners.length < 7) {
     return { error: 'Eleme kriterleri o kadar kısıtlayıcı ki 7 ayrı akşam yemeği kalmadı. Lütfen bazı elemeleri kaldırın.' };
+  }
+  if (breakfasts.length === 0) {
+    return { error: 'Elemelerinizle uygun kahvaltı kalmadı (ekmek/simit gibi temel kahvaltılıklar ekenmiş olabilir). Lütfen bazı elemeleri kaldırın.' };
   }
 
   const mustFree = state.mustFree.trim().toLowerCase();
@@ -372,9 +388,11 @@ function roundQty(qty, unit) {
 function buildShoppingList(planResult) {
   const totals = {}; // name -> {qty, unit, cat}
   const add = (recipe, scale) => {
-    for (const [name, qty] of recipe.ingredients) {
+    for (const [name, qty, optional] of recipe.ingredients) {
       const ing = ING[name];
       if (!ing) continue;
+      /* Opsiyonel servis malzemeleri (ör. ekmek) alerjen dışıysa listeye alınmaz */
+      if (optional && ingAllergens(name).some((a) => state.allergens.has(a))) continue;
       if (!totals[name]) totals[name] = { qty: 0, unit: ing.unit, cat: ing.cat };
       totals[name].qty += qty * scale;
     }
