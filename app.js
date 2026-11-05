@@ -1,6 +1,6 @@
 'use strict';
 /* =========================================================
-   MUTFAK PLANI — planlama motoru ve arayüz
+   MUTFAK PLANI — v3: anasayfa + çoklu mutfak + dolap + özel tarifler
    (veri katmanı data.js ve prices-data.js içinde)
    ========================================================= */
 
@@ -14,25 +14,18 @@ const STORES = {
   Edeka: { factor: 1.09 },
 };
 const STORE_LIST = Object.keys(STORES);
-const CAT_LABEL = {
-  sebze: 'Sebze & Meyve', meyve: 'Sebze & Meyve', et: 'Et & Şarküteri', tavuk: 'Et & Şarküteri',
-  balik: 'Balık', sut: 'Süt Ürünleri', kahvalti: 'Kahvaltılık', temel: 'Temel Gıda',
-  kuru: 'Bakliyat', firin: 'Fırın', baharat: 'Baharat',
-};
 
 /* ---------- Gerçek fiyat entegrasyonu ---------- */
-/* Adet bazlı bazı kalemler kg fiyatından çevrilir (ortalama adet ağırlığı) */
-const PIECE_KG = { 'muz': 0.12 };
+const PIECE_KG = { muz: 0.12 };
 
 function realUnitPrice(name, store) {
-  /* Gerçek veri varsa €/birim döndürür, yoksa null */
   const cur = (typeof CURATED !== 'undefined' && CURATED[name]) ? CURATED[name] : null;
   if (!cur || !cur.stores || !cur.stores[store]) return null;
   const ing = ING[name];
   const m = cur.stores[store].median;
   if (cur.basis === 'kg' && ing.unit === 'g') return m / 1000;
   if (cur.basis === 'kg' && ing.unit === 'adet') return m * (PIECE_KG[name] || 0.15);
-  return m; /* piece / egg / can → adet ile aynı */
+  return m;
 }
 function unitPrice(name, store) {
   const real = realUnitPrice(name, store);
@@ -63,7 +56,6 @@ function totalPortions(members) {
 
 /* ---------- Maliyet ---------- */
 function recipeCost(recipe, store) {
-  /* Belirli bir markette (veya en uygun market karışımında) tahmini malzeme maliyeti */
   return recipe.ingredients.reduce((s, [name, qty, optional]) => {
     const ing = ING[name];
     if (!ing) return s;
@@ -101,17 +93,17 @@ function satisfiesRules(pick, rules) {
 }
 
 function poolsFor(st) {
-  const byCuisine = (r) => st.cuisine === 'mix' || r.cuisine === st.cuisine;
-  const ok = (r) => byCuisine(r) && !recipeExcluded(r, st);
-  /* Beslenme çantasında evrensel ('mix') tarifler her mutfakta kullanılabilir */
-  const okLb = (r) => (byCuisine(r) || r.cuisine === 'mix') && !recipeExcluded(r, st);
+  const sel = st.cuisines;
+  const inSel = (r) => sel.has(r.cuisine);
+  const ok = (r) => !recipeExcluded(r, st);
   return {
-    dinners: RECIPES.filter((r) => r.meal === 'dinner' && ok(r)),
-    breakfasts: RECIPES.filter((r) => r.meal === 'breakfast' && ok(r)),
-    lunches: RECIPES.filter((r) => r.meal === 'lunch' && ok(r)),
-    desserts: RECIPES.filter((r) => r.meal === 'dessert' && ok(r)),
-    lunchboxes: RECIPES.filter((r) => r.meal === 'lunchbox' && okLb(r)),
-    guests: RECIPES.filter((r) => r.meal === 'dinner' && r.guest && ok(r)),
+    dinners: RECIPES.filter((r) => r.meal === 'dinner' && inSel(r) && ok(r)),
+    otherDinners: RECIPES.filter((r) => r.meal === 'dinner' && !inSel(r) && ok(r)),
+    breakfasts: RECIPES.filter((r) => r.meal === 'breakfast' && inSel(r) && ok(r)),
+    lunches: RECIPES.filter((r) => r.meal === 'lunch' && inSel(r) && ok(r)),
+    desserts: RECIPES.filter((r) => r.meal === 'dessert' && inSel(r) && ok(r)),
+    lunchboxes: RECIPES.filter((r) => r.meal === 'lunchbox' && (inSel(r) || r.cuisine === 'mix') && ok(r)),
+    guests: RECIPES.filter((r) => r.meal === 'dinner' && r.guest && inSel(r) && ok(r)),
   };
 }
 
@@ -127,7 +119,7 @@ function buildPlan(st) {
   const activeRules = MUST_RULES.filter((r) => st.mustRules.has(r.id));
 
   if (pools.dinners.length < 7) {
-    return { error: 'Seçimlerinizle (mutfak + elemeler) 7 ayrı akşam yemeği kalmadı. Farklı bir mutfak deneyin veya bazı elemeleri kaldırın.' };
+    return { error: 'Seçimlerinizle (mutfaklar + elemeler) 7 ayrı akşam yemeği kalmadı. Mutfak ekleyin veya bazı elemeleri kaldırın.' };
   }
   if (pools.breakfasts.length === 0 && homeP > 0) {
     return { error: 'Elemelerinizle uygun kahvaltı kalmadı. Lütfen bazı elemeleri kaldırın.' };
@@ -140,23 +132,19 @@ function buildPlan(st) {
   const mustFreeOk = (r) => !mustFree || r.ingredients.some(([n]) => n.toLowerCase().includes(mustFree));
   const mustFreeCount = (pick) => pick.filter(mustFreeOk).length;
 
-  /* Kahvaltı: evde kalan kişiler için (yoksa boş) */
+  /* Kahvaltı: evde kalanlar için */
   let bCycle = [];
-  let breakfastCost = 0;
   if (homeP > 0) {
     const bCheap = [...pools.breakfasts].sort((a, b) => recipeCost(a) - recipeCost(b));
     for (let i = 0; i < 7; i++) bCycle.push(bCheap[i % bCheap.length]);
-    breakfastCost = bCycle.reduce((s, r) => s + recipeCost(r), 0) * homeScale;
   }
 
-  /* Beslenme çantası: iş/okul gidenler için, kişi başı günlük */
+  /* Beslenme çantası: iş/okul gidenler için */
   let lbCycle = [];
-  let lunchboxCost = 0;
   if (awayCount > 0) {
     lbCycle = shuffle(pools.lunchboxes);
     while (lbCycle.length < 7) lbCycle = lbCycle.concat(shuffle(pools.lunchboxes));
     lbCycle = lbCycle.slice(0, 7);
-    lunchboxCost = lbCycle.reduce((s, r) => s + recipeCost(r), 0) * awayCount;
   }
 
   const mid = (st.budgetMin + st.budgetMax) / 2;
@@ -164,27 +152,19 @@ function buildPlan(st) {
   let relaxedBest = null;
 
   for (let iter = 0; iter < 600; iter++) {
-    let pick = shuffle(pools.dinners).slice(0, 7);
-    /* Misafir günü: misafir yemeğini ilgili güne sabitle */
-    let guestDayIdx = -1;
-    if (st.guest.enabled && pools.guests.length > 0) {
-      guestDayIdx = st.guest.day;
-      const gr = pools.guests[Math.floor(Math.random() * pools.guests.length)];
-      pick[guestDayIdx] = gr;
-    }
+    const pick = shuffle(pools.dinners).slice(0, 7);
     const ok = satisfiesRules(pick, activeRules);
-    const guestScale = st.guest.enabled ? (P + st.guest.count) / 4 : null;
     let dinnerCost = 0;
-    pick.forEach((r, i) => {
-      dinnerCost += recipeCost(r) * (guestDayIdx === i ? guestScale : scale);
-    });
-    const total = dinnerCost + breakfastCost + lunchboxCost;
+    pick.forEach((r) => { dinnerCost += recipeCost(r) * scale; });
+    const total = dinnerCost
+      + (homeP > 0 ? bCycle.reduce((s, r) => s + recipeCost(r), 0) * homeScale : 0)
+      + (awayCount > 0 ? lbCycle.reduce((s, r) => s + recipeCost(r), 0) * awayCount : 0);
     const score =
       (mustFree ? Math.min(mustFreeCount(pick), 3) * 4 : 0) +
       new Set(pick.flatMap((r) => r.tags)).size +
       (ok ? 10 : 0);
     const inRange = total >= st.budgetMin && total <= st.budgetMax;
-    const cand = { pick, total, score, ok, guestDayIdx, distance: Math.abs(total - mid), _in: inRange };
+    const cand = { pick, total, score, ok, distance: Math.abs(total - mid), _in: inRange };
     if (ok) {
       if (!best) best = cand;
       else if (inRange && !best._in) best = cand;
@@ -195,26 +175,46 @@ function buildPlan(st) {
   }
 
   let chosen = best || relaxedBest;
+
+  /* Sürpriz mutfak: seçilmeyen mutfaklardan 1-2 akşam yemeği */
+  const surprisePool = pools.otherDinners.filter((r) => r.cuisine !== 'mix');
+  let surpriseDays = [];
+  if (surprisePool.length > 0) {
+    const nSurprise = Math.random() < 0.7 ? 1 : 2;
+    const days = shuffle([0, 1, 2, 3, 4, 5, 6]).slice(0, nSurprise);
+    for (const d of days) {
+      for (let tryN = 0; tryN < 6; tryN++) {
+        const cand = surprisePool[Math.floor(Math.random() * surprisePool.length)];
+        if (cand.cuisine === chosen.pick[d].cuisine) continue;
+        const testPick = chosen.pick.map((r, i) => (i === d ? cand : r));
+        if (activeRules.length && !satisfiesRules(testPick, activeRules)) continue;
+        chosen.pick[d] = cand;
+        surpriseDays.push({ day: d, cuisine: cand.cuisine });
+        break;
+      }
+    }
+  }
+
   const plan = DAY_NAMES.map((day, i) => ({
     day,
     breakfast: homeP > 0 ? bCycle[i] : null,
     lunchbox: awayCount > 0 ? lbCycle[i] : null,
     dinner: chosen.pick[i],
-    guest: chosen.guestDayIdx === i,
-    guestScale: chosen.guestDayIdx === i && st.guest.enabled ? (P + st.guest.count) / 4 : null,
+    surprise: surpriseDays.find((s) => s.day === i) || null,
   }));
 
+  /* Toplamı final plandan taze hesapla */
+  let total = 0;
+  for (const d of plan) {
+    if (d.breakfast) total += recipeCost(d.breakfast) * homeScale;
+    if (d.lunchbox) total += recipeCost(d.lunchbox) * awayCount;
+    total += recipeCost(d.dinner) * scale;
+  }
+
   return {
-    plan,
-    scale,
-    homeScale,
-    awayCount,
-    portions: P,
-    total: chosen.total,
-    budgetMin: st.budgetMin,
-    budgetMax: st.budgetMax,
-    rulesSatisfied: chosen.ok,
-    relaxed: !best,
+    plan, scale, homeScale, awayCount, portions: P,
+    total, budgetMin: st.budgetMin, budgetMax: st.budgetMax,
+    rulesSatisfied: chosen.ok, relaxed: !best,
     mustFreeApplied: !!mustFree && mustFreeCount(chosen.pick) >= 2,
     mustFreeName: st.mustFree.trim(),
     pools,
@@ -226,6 +226,15 @@ function roundQty(qty, unit) {
   if (unit === 'g') return Math.max(10, Math.round(qty / 10) * 10);
   if (unit === 'adet') return Math.max(1, Math.round(qty));
   return Math.max(1, Math.round(qty));
+}
+
+function dinnerForDay(day, pr) {
+  /* Misafir varsa misafir yemeği, yoksa normal akşam yemeği */
+  const gCount = state.guests[day.day] || 0;
+  if (gCount > 0 && state.guestRecipes[day.day]) {
+    return { recipe: state.guestRecipes[day.day], scale: (pr.portions + gCount) / 4 };
+  }
+  return { recipe: day.dinner, scale: pr.scale };
 }
 
 function buildShoppingList(pr) {
@@ -241,7 +250,8 @@ function buildShoppingList(pr) {
   };
   for (const day of pr.plan) {
     if (day.breakfast) add(day.breakfast, pr.homeScale != null ? pr.homeScale : pr.scale);
-    add(day.dinner, day.guestScale || pr.scale);
+    const dinner = dinnerForDay(day, pr);
+    add(dinner.recipe, dinner.scale);
     if (day.lunchbox) add(day.lunchbox, pr.awayCount || 1);
     if (state.extras.lunches[day.day]) add(state.extras.lunches[day.day], pr.scale);
     if (state.extras.desserts[day.day]) add(state.extras.desserts[day.day], pr.scale);
@@ -284,7 +294,6 @@ function fmtDate(ym) {
   return `${TR_MONTHS[parseInt(m, 10) - 1]} ${y}`;
 }
 const cuisineName = (id) => (CUISINES.find((c) => c.id === id) || {}).name || id;
-/* Gluten alerjisi aktifse opsiyonel ekmekli yemeklerin adından ekmeği düşür */
 const displayName = (recipe) => {
   if (!state.allergens.has('gluten')) return recipe.name;
   const optBread = recipe.ingredients.some(([n, , opt]) => opt && /ekmek/i.test(n));
@@ -295,7 +304,7 @@ const displayName = (recipe) => {
    UYGULAMA DURUMU & ARAYÜZ
    ========================================================= */
 const state = {
-  cuisine: 'tr',
+  cuisines: new Set(['tr']),
   members: [
     { age: 35, gender: 'e', morning: 'ev' },
     { age: 33, gender: 'k', morning: 'ev' },
@@ -307,12 +316,14 @@ const state = {
   excludeFree: [],
   mustRules: new Set(['baklagil2', 'corba1']),
   mustFree: '',
-  guest: { enabled: false, day: 5, count: 2 },
-  step: 1,
+  guests: {},          /* { günAdı: misafirSayısı } */
+  guestRecipes: {},    /* { günAdı: tarif } */
+  extras: { lunches: {}, desserts: {} },
+  checked: new Set(),
+  pantry: new Set(),
   planResult: null,
   shopping: null,
-  checked: new Set(),
-  extras: { lunches: {}, desserts: {} },
+  view: 'home',
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -331,30 +342,33 @@ function toast(msg) {
   t._h = setTimeout(() => { t.hidden = true; }, 3600);
 }
 
-/* ---------- Stepper ---------- */
-const STEP_TITLES = ['Mutfağı', 'Hane', 'Bütçe', 'Eleme', 'Şartlar'];
-function renderStepper() {
-  const s = $('#stepper');
-  s.innerHTML = '';
-  STEP_TITLES.forEach((t, i) => {
-    const li = el('li', state.step > i + 1 ? 'is-done' : state.step === i + 1 ? 'is-active' : '');
-    li.innerHTML = `<span>${i + 1}. ${t}</span>`;
-    s.appendChild(li);
+/* ---------- Görünüm yönetimi ---------- */
+function showView(name) {
+  state.view = name;
+  ['home', 'plan', 'fridge', 'special'].forEach((v) => {
+    $(`#view-${v}`).hidden = v !== name;
   });
+  document.querySelectorAll('#header-nav .nav-tab').forEach((t) => {
+    t.classList.toggle('is-active', t.dataset.view === name);
+  });
+  window.scrollTo({ top: 0 });
 }
 
-/* ---------- Mutfaqı kartları ---------- */
+/* ---------- Mutfaqı kartları (çoklu seçim) ---------- */
 function renderCuisines() {
   const grid = $('#cuisine-grid');
   grid.innerHTML = '';
-  CUISINES.forEach((c) => {
-    const card = el('button', 'cuisine-card' + (state.cuisine === c.id ? ' is-selected' : ''));
+  CUISINES.filter((c) => c.id !== 'mix').forEach((c) => {
+    const on = state.cuisines.has(c.id);
+    const card = el('button', 'cuisine-card' + (on ? ' is-selected' : ''));
     card.type = 'button';
-    card.setAttribute('role', 'radio');
-    card.setAttribute('aria-checked', state.cuisine === c.id ? 'true' : 'false');
+    card.setAttribute('aria-pressed', on ? 'true' : 'false');
     card.setAttribute('data-testid', `card-cuisine-${c.id}`);
     card.innerHTML = `<span class="cuisine-name">${c.name}</span><span class="cuisine-desc">${c.desc}</span>`;
-    card.addEventListener('click', () => { state.cuisine = c.id; renderCuisines(); });
+    card.addEventListener('click', () => {
+      state.cuisines.has(c.id) ? state.cuisines.delete(c.id) : state.cuisines.add(c.id);
+      renderCuisines();
+    });
     grid.appendChild(card);
   });
 }
@@ -449,58 +463,27 @@ function renderAllChips() {
   }, false);
 }
 
-/* ---------- Misafir bölümü ---------- */
-function renderGuestFields() {
-  const sel = $('#guest-day');
-  sel.innerHTML = DAY_NAMES.map((d, i) => `<option value="${i}"${state.guest.day === i ? ' selected' : ''}>${d}</option>`).join('');
-  $('#guest-count').value = state.guest.count;
-  $('#guest-fields').hidden = !state.guest.enabled;
-}
-
-/* ---------- Sihirbaz gezinme ---------- */
-function showStep(n) {
-  state.step = n;
-  document.querySelectorAll('.wizard-step').forEach((s) => { s.hidden = Number(s.dataset.step) !== n; });
-  $('#btn-prev').hidden = n === 1;
-  $('#btn-next').textContent = n === 5 ? 'Planı Oluştur' : 'Devam';
-  renderStepper();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function nextStep() {
-  if (state.step === 3) {
-    const mn = parseFloat($('#budget-min').value);
-    const mx = parseFloat($('#budget-max').value);
-    if (!(mn >= 10 && mx >= 10 && mn <= mx)) { toast('Geçerli bir bütçe aralığı girin (alt ≤ üst).'); return; }
-    state.budgetMin = mn; state.budgetMax = mx;
-  }
-  if (state.step === 4) {
-    state.excludeFree = $('#exclude-free').value.split(',').map((s) => s.trim()).filter(Boolean);
-  }
-  if (state.step === 5) {
-    state.mustFree = $('#must-free').value;
-    state.guest.enabled = $('#guest-enabled').checked;
-    state.guest.day = parseInt($('#guest-day').value, 10);
-    state.guest.count = Math.max(1, parseInt($('#guest-count').value, 10) || 2);
-    generateAndShow();
-    return;
-  }
-  showStep(state.step + 1);
-}
-
-/* ---------- Plan üretimi ve sonuç görünümü ---------- */
+/* ---------- Plan üretimi ---------- */
 function generateAndShow() {
+  if (state.cuisines.size === 0) { toast('En az bir mutfak seçin.'); return; }
+  const mn = parseFloat($('#budget-min').value);
+  const mx = parseFloat($('#budget-max').value);
+  if (!(mn >= 10 && mx >= 10 && mn <= mx)) { toast('Geçerli bir bütçe aralığı girin (alt ≤ üst).'); return; }
+  state.budgetMin = mn; state.budgetMax = mx;
+  state.excludeFree = $('#exclude-free').value.split(',').map((s) => s.trim()).filter(Boolean);
+  state.mustFree = $('#must-free').value;
+  state.guests = {};
+  state.guestRecipes = {};
+  state.checked = new Set();
+  state.extras = { lunches: {}, desserts: {} };
+
   const result = buildPlan(state);
   if (result.error) { toast(result.error); return; }
   state.planResult = result;
-  state.checked = new Set();
-  state.extras = { lunches: {}, desserts: {} };
   renderResults();
-  $('#wizard').hidden = true;
-  $('#results').hidden = false;
-  $('#header-nav').hidden = false;
+  $('[data-view="plan"]').hidden = false;
+  showView('plan');
   switchTab('plan');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
   if (!result.rulesSatisfied) {
     toast('Not: Seçimlerinizle tüm şartlar aynı anda karşılanamadı; en yakın plan oluşturuldu.');
   }
@@ -509,10 +492,14 @@ function generateAndShow() {
 function currentTotal() {
   const pr = state.planResult;
   if (!pr) return 0;
-  let t = pr.total;
-  for (const d of pr.plan) {
-    if (state.extras.lunches[d.day]) t += recipeCost(state.extras.lunches[d.day]) * pr.scale;
-    if (state.extras.desserts[d.day]) t += recipeCost(state.extras.desserts[d.day]) * pr.scale;
+  let t = 0;
+  for (const day of pr.plan) {
+    if (day.breakfast) t += recipeCost(day.breakfast) * pr.homeScale;
+    if (day.lunchbox) t += recipeCost(day.lunchbox) * (pr.awayCount || 1);
+    const dinner = dinnerForDay(day, pr);
+    t += recipeCost(dinner.recipe) * dinner.scale;
+    if (state.extras.lunches[day.day]) t += recipeCost(state.extras.lunches[day.day]) * pr.scale;
+    if (state.extras.desserts[day.day]) t += recipeCost(state.extras.desserts[day.day]) * pr.scale;
   }
   return t;
 }
@@ -521,26 +508,26 @@ function tagPill(tag) {
   const labels = {
     vegan: 'Vegan', vejetaryen: 'Vejetaryen', balik: 'Balık', pratik: 'Pratik', corba: 'Çorba',
     baklagil: 'Baklagil', tahil: 'Pilav/Bulgur', makarna: 'Makarna', etli: 'Etli', tavuk: 'Tavuk',
-    sebze: 'Sebze', misafir: 'Misafir', firin: 'Fırın', kahvalti: 'Kahvalti', lunch: 'Öğle',
+    sebze: 'Sebze', misafir: 'Misafir', firin: 'Fırın', ozel: 'Özel',
   };
   return labels[tag] ? `<span class="tag t-${tag}">${labels[tag]}</span>` : '';
 }
 
 function renderResults() {
   const r = state.planResult;
+  if (!r) return;
   state.shopping = buildShoppingList(r);
   const s = state.shopping;
   const total = currentTotal();
+  const selNames = [...state.cuisines].map(cuisineName).join(' + ');
 
-  /* Özet */
-  const awayLine = r.awayCount > 0
-    ? ` · ${r.awayCount} kişi için günlük beslenme çantası`
-    : '';
+  const awayLine = r.awayCount > 0 ? ` · ${r.awayCount} kişi için günlük beslenme çantası` : '';
   $('#results-summary').innerHTML = `
     <h2>Haftalık planınız hazır</h2>
-    <p>${cuisineName(state.cuisine)} · ${state.members.length} kişi · ${r.portions.toFixed(1).replace('.', ',')} porsiyon${awayLine} ·
-    tahmini toplam <strong>${fmtEur(total)}</strong>
-    (bütçe aralığınız ${fmtEur(r.budgetMin)} – ${fmtEur(r.budgetMax)})</p>`;
+    <p>${selNames} · ${state.members.length} kişi · ${r.portions.toFixed(1).replace('.', ',')} porsiyon${awayLine} ·
+    haftalık tüketim maliyeti <strong>${fmtEur(total)}</strong>
+    (bütçe aralığınız ${fmtEur(r.budgetMin)} – ${fmtEur(r.budgetMax)}) ·
+    tam paket alımlarıyla alışveriş sepeti ${fmtEur(s.grandTotal)}</p>`;
 
   /* ---------- PLAN PANELİ ---------- */
   const planPanel = $('#panel-plan');
@@ -554,7 +541,7 @@ function renderResults() {
   barWrap.innerHTML = `
     <div class="budget-bar-top">
       <span class="budget-total">${fmtEur(total)}</span>
-      <span class="budget-range">Bütçe aralığı: ${fmtEur(r.budgetMin)} – ${fmtEur(r.budgetMax)} · öğle/tatlı eklemeleri dahil</span>
+      <span class="budget-range">Bütçe aralığı: ${fmtEur(r.budgetMin)} – ${fmtEur(r.budgetMax)} · misafir, öğle ve tatlı eklemeleri dahil</span>
     </div>
     <div class="budget-track" role="img" aria-label="Toplam maliyet ${fmtEur(total)}, bütçe aralığı ${fmtEur(r.budgetMin)} ile ${fmtEur(r.budgetMax)} arasında">
       <div class="budget-range-band" style="left:${bandL}%; width:${Math.max(bandR - bandL, 0.5)}%"></div>
@@ -572,18 +559,21 @@ function renderResults() {
     const bScale = r.homeScale != null ? r.homeScale : r.scale;
     const bCost = day.breakfast ? recipeCost(day.breakfast) * bScale : 0;
     const lbCost = day.lunchbox ? recipeCost(day.lunchbox) * (r.awayCount || 1) : 0;
-    const dCost = recipeCost(day.dinner) * (day.guestScale || r.scale);
+    const dinner = dinnerForDay(day, r);
+    const dCost = recipeCost(dinner.recipe) * dinner.scale;
     const lCost = state.extras.lunches[day.day] ? recipeCost(state.extras.lunches[day.day]) * r.scale : 0;
     const dsCost = state.extras.desserts[day.day] ? recipeCost(state.extras.desserts[day.day]) * r.scale : 0;
+    const gCount = state.guests[day.day] || 0;
+
     const card = el('div', 'day-card');
     card.setAttribute('data-testid', `card-day-${i}`);
     card.innerHTML = `
       <div class="day-card-head">
-        <span class="day-name">${day.day}${day.guest ? ' <span class="guest-badge">misafirli</span>' : ''}</span>
+        <span class="day-name">${day.day}${gCount > 0 ? ` <span class="guest-badge">misafirli (${gCount})</span>` : ''}</span>
         <span class="day-cost">${fmtEur(bCost + dCost + lCost + dsCost + lbCost)}</span>
       </div>`;
 
-    const mkMeal = (label, meal, cls) => {
+    const mkMeal = (label, meal, cls, extraBadge) => {
       const slot = el('div', 'meal-slot');
       const lab = el('span', 'meal-label', label);
       const btn = el('button', `meal-card ${cls}`);
@@ -593,16 +583,17 @@ function renderResults() {
         ? `${fmtEur(recipeCost(meal))}/kişi`
         : `${fmtEur(recipeCost(meal) / meal.serves)}/porsiyon`;
       btn.innerHTML = `
-        <span class="meal-name">${displayName(meal)}</span>
+        <span class="meal-name">${displayName(meal)}${extraBadge || ''}</span>
         <span class="meal-meta">${meal.time} dk · ${perServing}</span>`;
-      btn.addEventListener('click', () => openModal(meal, day));
+      btn.addEventListener('click', () => openModal(meal, { day: day.day, scale: dinner.scale }));
       slot.append(lab, btn);
       return slot;
     };
 
     if (day.breakfast) card.appendChild(mkMeal('Kahvaltı', day.breakfast, 'is-breakfast'));
     if (day.lunchbox) card.appendChild(mkMeal('Beslenme (iş/okul)', day.lunchbox, 'is-lunchbox'));
-    card.appendChild(mkMeal('Akşam', day.dinner, 'is-dinner'));
+    const surpriseBadge = day.surprise ? `<span class="surprise-badge">${cuisineName(day.surprise.cuisine)}</span>` : '';
+    card.appendChild(mkMeal('Akşam', dinner.recipe, 'is-dinner', surpriseBadge));
 
     if (state.extras.lunches[day.day]) {
       card.appendChild(mkMeal('Öğle', state.extras.lunches[day.day], 'is-lunch'));
@@ -611,8 +602,9 @@ function renderResults() {
       card.appendChild(mkMeal('Tatlı', state.extras.desserts[day.day], 'is-dessert'));
     }
 
+    /* Gün bazlı ekleme düğmeleri */
     const extraRow = el('div', 'extra-row');
-    const lunchBtn = el('button', 'btn btn-ghost btn-sm', state.extras.lunches[day.day] ? 'Öğle kaldır' : '+ Öğle yemeği');
+    const lunchBtn = el('button', 'btn btn-ghost btn-sm', state.extras.lunches[day.day] ? 'Öğle kaldır' : '+ Öğle');
     lunchBtn.type = 'button';
     lunchBtn.setAttribute('data-testid', `button-lunch-${i}`);
     lunchBtn.addEventListener('click', () => toggleExtra('lunches', day.day));
@@ -621,6 +613,30 @@ function renderResults() {
     dessertBtn.setAttribute('data-testid', `button-dessert-${i}`);
     dessertBtn.addEventListener('click', () => toggleExtra('desserts', day.day));
     extraRow.append(lunchBtn, dessertBtn);
+    if (gCount === 0) {
+      const guestBtn = el('button', 'btn btn-ghost btn-sm', '+ Misafir');
+      guestBtn.type = 'button';
+      guestBtn.setAttribute('data-testid', `button-guest-${i}`);
+      guestBtn.addEventListener('click', () => toggleGuest(day.day));
+      extraRow.appendChild(guestBtn);
+    } else {
+      const stepper = el('div', 'guest-stepper');
+      stepper.setAttribute('data-testid', `guest-stepper-${i}`);
+      const dec = el('button', 'btn btn-ghost btn-sm', '−');
+      dec.type = 'button';
+      dec.setAttribute('aria-label', 'Misafir azalt');
+      const cnt = el('span', 'guest-count', `${gCount} misafir`);
+      const inc = el('button', 'btn btn-ghost btn-sm', '+');
+      inc.type = 'button';
+      inc.setAttribute('aria-label', 'Misafir artır');
+      const off = el('button', 'btn btn-ghost btn-sm', 'Misafir kaldır');
+      off.type = 'button';
+      dec.addEventListener('click', () => adjustGuest(day.day, -1));
+      inc.addEventListener('click', () => adjustGuest(day.day, 1));
+      off.addEventListener('click', () => toggleGuest(day.day));
+      stepper.append(dec, cnt, inc, off);
+      extraRow.appendChild(stepper);
+    }
     card.appendChild(extraRow);
 
     grid.appendChild(card);
@@ -672,7 +688,7 @@ function renderResults() {
   }
   const realPct = s.items.length ? Math.round((s.realCount / s.items.length) * 100) : 0;
   shopPanel.appendChild(el('p', 'shopping-footnote',
-    `Tahmini toplam: ${fmtEur(s.grandTotal)} · Kalemlerin %${realPct}'i gerçek market fiyatları (Open Prices topluluk verisi, son 12 ay medyanı), kalanı tahmini. Mağazaya ve sezona göre değişebilir.`));
+    `Sepet tutarı: ${fmtEur(s.grandTotal)} (tam paket/gramaj yuvarlamasıyla — tüketim maliyeti bundan düşüktür) · Kalemlerin %${realPct}'i gerçek market fiyatları (Open Prices topluluk verisi, son 12 ay medyanı), kalanı tahmini. Mağazaya ve sezona göre değişebilir.`));
 
   /* ---------- KARŞILAŞTIRMA PANELİ ---------- */
   const cmpPanel = $('#panel-compare');
@@ -729,30 +745,57 @@ function toggleExtra(kind, dayName) {
   renderResults();
 }
 
+/* ---------- Misafir (gün bazlı) ---------- */
+function toggleGuest(dayName) {
+  const pr = state.planResult;
+  if (state.guests[dayName]) {
+    delete state.guests[dayName];
+    delete state.guestRecipes[dayName];
+  } else {
+    state.guests[dayName] = 2;
+    const pool = pr.pools.guests.length ? pr.pools.guests : pr.pools.dinners;
+    const used = Object.values(state.guestRecipes);
+    let candidates = pool.filter((r) => !used.includes(r));
+    if (!candidates.length) candidates = pool;
+    state.guestRecipes[dayName] = candidates[Math.floor(Math.random() * candidates.length)];
+    toast(`${dayName} günü için misafir menüsü eklendi. Malzemeler otomatik artırılır.`);
+  }
+  renderResults();
+}
+function adjustGuest(dayName, delta) {
+  const cur = state.guests[dayName] || 0;
+  const next = Math.min(12, Math.max(1, cur + delta));
+  state.guests[dayName] = next;
+  renderResults();
+}
+
 /* ---------- Sekmeler ---------- */
 function switchTab(name) {
-  document.querySelectorAll('.nav-tab').forEach((t) => t.classList.toggle('is-active', t.dataset.resultsTab === name));
+  document.querySelectorAll('.plan-tabs .nav-tab').forEach((t) => t.classList.toggle('is-active', t.dataset.resultsTab === name));
   document.querySelectorAll('.results-tab').forEach((p) => { p.hidden = p.dataset.resultsPanel !== name; });
 }
 
 /* ---------- Tarif modalı ---------- */
-const MEAL_LABELS = { dinner: 'Akşam yemeği', breakfast: 'Kahvaltı', lunch: 'Öğle yemeği', dessert: 'Tatlı', lunchbox: 'Beslenme çantası' };
-function openModal(recipe, day) {
+const MEAL_LABELS = { dinner: 'Akşam yemeği', breakfast: 'Kahvaltı', lunch: 'Öğle yemeği', dessert: 'Tatlı', lunchbox: 'Beslenme çantası', special: 'Özel tarif' };
+function openModal(recipe, ctx) {
   const r = state.planResult;
   const isLb = recipe.meal === 'lunchbox';
-  const scale = isLb ? 1 : (day && day.guestScale ? day.guestScale : r.scale);
-  const cost = recipeCost(recipe) * (isLb ? (r.awayCount || 1) : scale);
-  const perLabel = isLb ? `${fmtEur(recipeCost(recipe))}/kişi` : `${fmtEur(recipeCost(recipe) / recipe.serves)}/porsiyon`;
+  const isSpecial = recipe.meal === 'special';
+  const scale = isLb ? 1 : (ctx && ctx.scale ? ctx.scale : (r ? r.scale : 1));
+  const cost = recipeCost(recipe) * (isLb ? (r && r.awayCount) || 1 : scale);
+  const perLabel = isSpecial ? `${fmtEur(recipeCost(recipe))} (4 kişilik)`
+    : isLb ? `${fmtEur(recipeCost(recipe))}/kişi`
+    : `${fmtEur(recipeCost(recipe) / recipe.serves)}/porsiyon`;
   const modal = $('#modal-inner');
   modal.innerHTML = `
     <button type="button" class="modal-close" data-testid="button-modal-close" aria-label="Kapat">Kapat ✕</button>
     <h3 id="modal-title">${displayName(recipe)}</h3>
-    <p class="modal-sub">${MEAL_LABELS[recipe.meal]} · ${cuisineName(recipe.cuisine)} · ${recipe.time} dk · ${perLabel} · hane için: ${fmtEur(cost)}</p>
+    <p class="modal-sub">${MEAL_LABELS[recipe.meal]} · ${cuisineName(recipe.cuisine)} · ${recipe.time} dk · ${perLabel}${isSpecial ? '' : ` · hane için: ${fmtEur(cost)}`}</p>
     <div class="tag-row">${recipe.tags.filter((t) => !['kahvalti', 'lunch'].includes(t)).map(tagPill).join('')}</div>
-    <h4>${isLb ? 'Malzemeler (kişi başı)' : 'Malzemeler (haneye göre ölçekli)'}</h4>
+    <h4>${isLb ? 'Malzemeler (kişi başı)' : isSpecial ? 'Malzemeler' : 'Malzemeler (haneye göre ölçekli)'}</h4>
     <ul class="ingredients">${recipe.ingredients.map(([name, qty]) => {
       const ing = ING[name];
-      const q = roundQty(qty * scale, ing.unit);
+      const q = roundQty(qty * (isSpecial ? 1 : scale), ing.unit);
       const unit = ing.unit === 'g' ? 'g' : ing.unit === 'adet' ? 'adet' : ing.unit === 'tutam' ? 'tutam' : 'tk';
       return `<li><span>${name}</span><span>${q} ${unit}</span></li>`;
     }).join('')}</ul>
@@ -767,36 +810,150 @@ function closeModal() {
   document.body.style.overflow = '';
 }
 
+/* =========================================================
+   DOLAPTAN YEMEK
+   ========================================================= */
+function renderFridgeDatalist() {
+  const dl = $('#fridge-datalist');
+  dl.innerHTML = Object.keys(ING)
+    .sort((a, b) => a.localeCompare(b, 'tr'))
+    .map((n) => `<option value="${n}">`).join('');
+}
+
+function renderFridgeChips() {
+  const c = $('#fridge-chips');
+  c.innerHTML = '';
+  state.pantry.forEach((name) => {
+    const chip = el('button', 'chip is-on', `${name} ✕`);
+    chip.type = 'button';
+    chip.setAttribute('data-testid', `chip-pantry-${name}`);
+    chip.setAttribute('aria-label', `${name} çıkar`);
+    chip.addEventListener('click', () => {
+      state.pantry.delete(name);
+      renderFridgeChips();
+      if ($('#fridge-results').children.length) suggestFromPantry();
+    });
+    c.appendChild(chip);
+  });
+}
+
+function addPantryItem() {
+  const input = $('#fridge-input');
+  const raw = input.value.trim().toLowerCase();
+  if (!raw) { suggestFromPantry(); return; }
+  /* En yakın malzeme adını bul (tam eşleşme veya başlangıç) */
+  const names = Object.keys(ING);
+  let match = names.find((n) => n.toLowerCase() === raw)
+    || names.find((n) => n.toLowerCase().startsWith(raw))
+    || names.find((n) => n.toLowerCase().includes(raw));
+  if (!match) { toast(`"${raw}" malzeme listesinde yok. Listeden seçmeyi deneyin.`); return; }
+  state.pantry.add(match);
+  input.value = '';
+  renderFridgeChips();
+}
+
+function suggestFromPantry() {
+  const out = $('#fridge-results');
+  out.innerHTML = '';
+  if (state.pantry.size === 0) {
+    out.appendChild(el('p', 'step-hint', 'Önce dolabınızdaki birkaç malzemeyi ekleyin.'));
+    return;
+  }
+  const candidates = RECIPES
+    .filter((r) => ['dinner', 'breakfast', 'lunch', 'dessert', 'lunchbox'].includes(r.meal))
+    .filter((r) => !recipeExcluded(r, state))
+    .map((r) => {
+      const req = r.ingredients.filter(([n, , opt]) => !opt);
+      const matched = req.filter(([n]) => state.pantry.has(n));
+      const missing = req.filter(([n]) => !state.pantry.has(n));
+      return { r, total: req.length, matched: matched.length, missing };
+    })
+    .filter((c) => c.matched > 0 && c.matched / c.total >= 0.4)
+    .sort((a, b) => (b.matched / b.total) - (a.matched / a.total) || a.missing.length - b.missing.length)
+    .slice(0, 12);
+
+  if (!candidates.length) {
+    out.appendChild(el('p', 'step-hint', 'Bu malzemelerle uygun bir tarif bulunamadı. Birkaç malzeme daha eklemeyi deneyin.'));
+    return;
+  }
+
+  const head = el('h3', 'fridge-results-title', `Dolabınıza göre ${candidates.length} öneri`);
+  out.appendChild(head);
+
+  const grid = el('div', 'fridge-grid');
+  candidates.forEach((c, i) => {
+    const missingCost = c.missing.reduce((s, [n, q]) => s + bestStoreFor(n).ppu * q, 0);
+    const card = el('div', 'fridge-card');
+    card.setAttribute('data-testid', `card-fridge-${i}`);
+    card.innerHTML = `
+      <div class="fridge-card-head">
+        <span class="meal-name">${displayName(c.r)}</span>
+        <span class="surprise-badge">${cuisineName(c.r.cuisine)}</span>
+      </div>
+      <span class="meal-meta">${MEAL_LABELS[c.r.meal]} · ${c.r.time} dk · ${c.matched}/${c.total} malzeme dolapta</span>
+      <div class="missing-box">
+        <span class="missing-title">${c.missing.length === 0 ? 'Her şey dolapta' : 'Eksik:'}</span>
+        ${c.missing.length ? `<span class="missing-list">${c.missing.map(([n]) => n).join(', ')}</span><span class="missing-cost">~${fmtEur(missingCost)}</span>` : ''}
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" data-testid="button-fridge-recipe-${i}">Tarifi gör</button>`;
+    card.querySelector('button').addEventListener('click', () => openModal(c.r, { scale: 1 }));
+    grid.appendChild(card);
+  });
+  out.appendChild(grid);
+}
+
+/* =========================================================
+   ÖZEL TARİFLER
+   ========================================================= */
+function renderSpecials() {
+  const grid = $('#special-grid');
+  grid.innerHTML = '';
+  RECIPES.filter((r) => r.meal === 'special').forEach((r, i) => {
+    const card = el('div', 'special-card');
+    card.setAttribute('data-testid', `card-special-${i}`);
+    card.innerHTML = `
+      <div class="fridge-card-head">
+        <span class="meal-name">${r.name}</span>
+        <span class="surprise-badge">${cuisineName(r.cuisine)}</span>
+      </div>
+      <span class="meal-meta">${r.time} dk · ${r.tags.filter((t) => t !== 'ozel').map(tagPill).join(' ')}</span>
+      <span class="meal-meta">Tahmini malzeme maliyeti: ${fmtEur(recipeCost(r))}</span>
+      <button type="button" class="btn btn-outline btn-sm" data-testid="button-special-${i}">Tarifi gör</button>`;
+    card.querySelector('button').addEventListener('click', () => openModal(r, { scale: 1 }));
+    grid.appendChild(card);
+  });
+}
+
 /* ---------- Olay bağlama ---------- */
 $('#btn-add-member').addEventListener('click', () => {
-  state.members.push({ age: 30, gender: 'e' });
+  state.members.push({ age: 30, gender: 'e', morning: 'ev' });
   renderMembers();
 });
-$('#btn-prev').addEventListener('click', () => showStep(Math.max(1, state.step - 1)));
-$('#btn-next').addEventListener('click', nextStep);
+$('#btn-generate').addEventListener('click', generateAndShow);
 $('#btn-regen').addEventListener('click', () => { generateAndShow(); toast('Yeni bir plan oluşturuldu.'); });
-$('#btn-edit-setup').addEventListener('click', () => {
-  $('#results').hidden = true;
-  $('#header-nav').hidden = true;
-  $('#wizard').hidden = false;
-  showStep(1);
+$('#btn-edit-setup').addEventListener('click', () => showView('home'));
+$('#brand-home').addEventListener('click', () => showView('home'));
+document.querySelectorAll('#header-nav .nav-tab').forEach((t) => {
+  t.addEventListener('click', () => {
+    if (t.dataset.view === 'plan' && !state.planResult) return;
+    showView(t.dataset.view);
+  });
 });
-$('#guest-enabled').addEventListener('change', (e) => {
-  state.guest.enabled = e.target.checked;
-  renderGuestFields();
-});
-$('#guest-day').addEventListener('change', (e) => { state.guest.day = parseInt(e.target.value, 10); });
-$('#guest-count').addEventListener('input', (e) => { state.guest.count = Math.max(1, parseInt(e.target.value, 10) || 2); });
-document.querySelectorAll('.nav-tab').forEach((t) => {
+document.querySelectorAll('.plan-tabs .nav-tab').forEach((t) => {
   t.addEventListener('click', () => switchTab(t.dataset.resultsTab));
 });
+$('#fridge-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); addPantryItem(); }
+});
+$('#btn-fridge-suggest').addEventListener('click', () => { addPantryItem(); suggestFromPantry(); });
 $('#modal').addEventListener('click', (e) => { if (e.target === $('#modal')) closeModal(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
 /* ---------- Başlat ---------- */
-renderStepper();
 renderCuisines();
 renderMembers();
 renderAllChips();
-renderGuestFields();
-showStep(1);
+renderFridgeDatalist();
+renderFridgeChips();
+renderSpecials();
+showView('home');
