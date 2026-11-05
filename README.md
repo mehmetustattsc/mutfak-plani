@@ -5,15 +5,15 @@ Ev hanesine göre haftalık yemek planı, tarif, alışveriş listesi ve market 
 ## Özellikler
 
 - **Hane kurulumu**: Kişi sayısı, yaşlar, cinsiyetler ve sabah programı (evde kahvaltı / iş — beslenme / okul — beslenme)
-- **Çoklu mutfak seçimi**: Türk, İtalyan, Fransız, Alman, Yunan, Çin, Hint, Meksika, Japon — birden fazla seçilebilir; seçilmeyen mutfaklardan haftada 1–2 "sürpriz" öneri
+- **Çoklu mutfak seçimi + ağırlık**: Türk, İtalyan, Fransız, Alman, Yunan, Çin, Hint, Meksika, Japon — birden fazla seçilebilir ve her mutfağa 1–5 arası ağırlık verilebilir (ör. Türk 5, Alman 3, İtalyan 2); seçilmeyen mutfaklardan haftada 1–2 "sürpriz" öneri
 - **Beslenme tercihi**: Hepçil / Vejetaryen / Vegan + Helal (domuz ürünleri hariç), Sporcu (protein ağırlıklı) ve Diyet (hafif yemekler) modları
-- **Çoklu dil**: Türkçe, Almanca ve İngilizce — üstteki dil düğmesiyle anında değişir, 136 tarif dahil tüm arayüz çevrilidir; seçim tarayıcıda hatırlanır
+- **Çoklu dil**: Türkçe, Almanca ve İngilizce — üstteki dil düğmesiyle anında değişir, 137 tarif dahil tüm arayüz çevrilidir; seçim tarayıcıda hatırlanır
 - **Eleme ve zorunluluklar**: Alerjenler, sevilmeyen gıdalar, mutlaka olması gereken gıdalar
 - **Bütçe aralığı**: Plan, belirlenen aralığa sığacak şekilde oluşturulur
 - **Günlük eklemeler**: Öğle yemeği, tatlı, misafir (kişi sayısı ayarlanabilir) — malzeme miktarları otomatik ölçeklenir
 - **Alışveriş listesi**: Malzemeler marketlere bölünür; gerçek fiyatlar Open Prices (prices.openfoodfacts.org) topluluk verisinden, Almanya 2025+ medyanı
 - **Market karşılaştırması**: Aynı sepetin tek markette maliyeti, "en uygun" işaretli
-- **Dolaptan Yemek**: Eldeli malzemeleri girin, eksik malzemeleri ve maliyetiyle tarif önerileri alın
+- **Dolaptan Yemek**: Eldeli malzemeleri girin, eksik malzemeleri ve maliyetiyle tarif önerileri alın — tek malzemeyle bile niş tarifler (ör. cacık) önerilir
 - **Özel Tarifler**: Evde ekmek, suşi, el yapımı makarna, lahmacun, hummus, granola
 - **PWA (telefona kurulabilir)**: Android/Chrome'da üstteki "Uygulamayı yükle" düğmesiyle veya tarayıcı menüsünden kurulur; iOS'ta Safari > Paylaş > Ana Ekrana Ekle. Tüm dosyalar önbelleğe alındığı için internet olmadan da çalışır
 
@@ -36,7 +36,7 @@ Ardından tarayıcıda `http://localhost:3000` açın.
 |---|---|
 | `index.html` | 4 görünüm: Anasayfa, Haftalık Plan, Dolaptan Yemek, Özel Tarifler |
 | `app.js` | Uygulama mantığı (plan üretimi, alışveriş listesi, dolap önerileri) |
-| `data.js` | 136 tarif, ~94 malzeme, alerjen eşlemeleri, 9 mutfak |
+| `data.js` | 137 tarif, ~94 malzeme, alerjen eşlemeleri, 9 mutfak |
 | `i18n-de.js` / `i18n-en.js` | Almanca ve İngilizce çeviriler (arayüz + 136 tarif) |
 | `manifest.webmanifest` + `sw.js` + `icons/` | PWA: kurulabilirlik ve çevrimdışı çalışma |
 | `prices-data.js` | Gerçek market fiyatları (Open Prices medyanları) |

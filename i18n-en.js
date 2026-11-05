@@ -407,3 +407,12 @@ Object.assign(window.I18N.en.ui, {
   'Uygulamayı yükle': 'Install app',
   'Uygulama yüklendi.': 'App installed.',
 });
+
+/* ---- v5: mutfak ağırlığı + cacık ---- */
+Object.assign(window.I18N.en.ui, {
+  'Ağırlık': 'Weight',
+  'Ağırlık: seçili mutfakta noktalara dokunun — 5 = en sık önerilir, 1 = nadiren. Örnek: Türk 5, Alman 3, İtalyan 2.': 'Weight: tap the dots on a selected cuisine — 5 = suggested most often, 1 = rarely. Example: Turkish 5, German 3, Italian 2.',
+});
+(function (R) {
+  R['cacik'] = { name: 'Cacık (Yogurt & Cucumber)', steps: ['Grate or finely dice the cucumber.', 'Crush the garlic and mix into the yogurt.', 'Stir in the cucumber and finely chopped mint.', 'Thin with a few spoons of water if you like.', 'Serve cold with a drizzle of olive oil and dried mint.'] };
+})(window.I18N.en.recipes);

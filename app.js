@@ -173,6 +173,28 @@ function shuffle(arr) {
   }
   return a;
 }
+/* Mutfak ağırlığı: seçili mutfakta kullanıcı değeri (1-5, varsayılan 3),
+   seçili olmayan mutfak nadir önerilir (1) */
+function cuisineWeight(cuisineId, st) {
+  if (!st.cuisines.has(cuisineId)) return 1;
+  return (st.cuisineWeights && st.cuisineWeights[cuisineId]) || 3;
+}
+/* Ağırlıklı tek seçim (rulet çarkı) */
+function weightedPick(arr, weightOf) {
+  const total = arr.reduce((s, x) => s + weightOf(x), 0);
+  let r = Math.random() * total;
+  for (const x of arr) {
+    r -= weightOf(x);
+    if (r <= 0) return x;
+  }
+  return arr[arr.length - 1];
+}
+/* Ağırlıklı örnekleme tekrarsız (Efraimidis-Spirakis) */
+function weightedSample(arr, k, weightOf) {
+  const keyed = arr.map((x) => ({ x, key: Math.pow(Math.random(), 1 / weightOf(x)) }));
+  keyed.sort((a, b) => b.key - a.key);
+  return keyed.slice(0, k).map((o) => o.x);
+}
 function satisfiesRules(pick, rules) {
   const counts = {};
   for (const r of pick) for (const t of r.tags) counts[t] = (counts[t] || 0) + 1;
@@ -232,18 +254,17 @@ function buildPlan(st) {
   const mustFreeOk = (r) => !mustFree || r.ingredients.some(([n]) => n.toLowerCase().includes(mustFree));
   const mustFreeCount = (pick) => pick.filter(mustFreeOk).length;
 
-  /* Kahvaltı: evde kalanlar için */
+  /* Kahvaltı: evde kalanlar için — mutfak ağırlığına göre günlük seçim */
+  const wOf = (r) => cuisineWeight(r.cuisine, st);
   let bCycle = [];
   if (homeP > 0) {
-    const bCheap = [...pools.breakfasts].sort((a, b) => recipeCost(a) - recipeCost(b));
-    for (let i = 0; i < 7; i++) bCycle.push(bCheap[i % bCheap.length]);
+    for (let i = 0; i < 7; i++) bCycle.push(weightedPick(pools.breakfasts, wOf));
   }
 
   /* Beslenme çantası: iş/okul gidenler için */
   let lbCycle = [];
   if (awayCount > 0) {
-    lbCycle = shuffle(pools.lunchboxes);
-    while (lbCycle.length < 7) lbCycle = lbCycle.concat(shuffle(pools.lunchboxes));
+    while (lbCycle.length < 7) lbCycle = lbCycle.concat(weightedSample(pools.lunchboxes, 7, wOf));
     lbCycle = lbCycle.slice(0, 7);
   }
 
@@ -252,7 +273,7 @@ function buildPlan(st) {
   let relaxedBest = null;
 
   for (let iter = 0; iter < 600; iter++) {
-    const pick = shuffle(pools.dinners).slice(0, 7);
+    const pick = weightedSample(pools.dinners, 7, wOf);
     const ok = satisfiesRules(pick, activeRules);
     let dinnerCost = 0;
     pick.forEach((r) => { dinnerCost += recipeCost(r) * scale; });
@@ -425,6 +446,7 @@ const state = {
     try { return (langStore() && langStore().getItem('mp-lang')) || 'tr'; } catch (e) { return 'tr'; }
   })(),
   cuisines: new Set(['tr']),
+  cuisineWeights: { tr: 5 },
   diet: { style: 'normal', halal: false, athlete: false, light: false },
   members: [
     { age: 35, gender: 'e', morning: 'ev' },
@@ -512,14 +534,42 @@ function renderCuisines() {
   grid.innerHTML = '';
   CUISINES.filter((c) => c.id !== 'mix').forEach((c) => {
     const on = state.cuisines.has(c.id);
+    const w = (state.cuisineWeights[c.id] || 3);
     const ci = tCuisine(c.id);
     const card = el('button', 'cuisine-card' + (on ? ' is-selected' : ''));
     card.type = 'button';
     card.setAttribute('aria-pressed', on ? 'true' : 'false');
     card.setAttribute('data-testid', `card-cuisine-${c.id}`);
     card.innerHTML = `<span class="cuisine-name">${ci.name}</span><span class="cuisine-desc">${ci.desc}</span>`;
+    if (on) {
+      const wRow = el('div', 'weight-row');
+      wRow.setAttribute('role', 'group');
+      wRow.setAttribute('aria-label', `${t('Ağırlık')}: ${ci.name}`);
+      for (let n = 1; n <= 5; n++) {
+        const pip = el('span', 'weight-pip' + (w >= n ? ' is-on' : ''));
+        pip.setAttribute('role', 'button');
+        pip.setAttribute('tabindex', '0');
+        pip.setAttribute('data-testid', `button-weight-${c.id}-${n}`);
+        pip.setAttribute('aria-label', `${t('Ağırlık')} ${n}/5`);
+        const setW = (e) => {
+          e.stopPropagation();
+          state.cuisineWeights[c.id] = n;
+          renderCuisines();
+        };
+        pip.addEventListener('click', setW);
+        pip.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setW(e); } });
+        wRow.appendChild(pip);
+      }
+      card.appendChild(wRow);
+    }
     card.addEventListener('click', () => {
-      state.cuisines.has(c.id) ? state.cuisines.delete(c.id) : state.cuisines.add(c.id);
+      if (state.cuisines.has(c.id)) {
+        state.cuisines.delete(c.id);
+        delete state.cuisineWeights[c.id];
+      } else {
+        state.cuisines.add(c.id);
+        if (!state.cuisineWeights[c.id]) state.cuisineWeights[c.id] = 3;
+      }
       renderCuisines();
     });
     grid.appendChild(card);
@@ -626,7 +676,10 @@ function renderChips(containerSel, options, activeSet, onToggle, excludeStyle) {
 }
 
 function renderAllChips() {
-  renderChips('#allergen-chips', ALLERGEN_OPTIONS.map((a) => [a, tAllergen(a)]), state.allergens, (v) => {
+  renderChips('#allergen-chips', ALLERGEN_OPTIONS.map((a) => {
+    const [val, label] = Array.isArray(a) ? a : [a, a];
+    return [val, tAllergen(label)];
+  }), state.allergens, (v) => {
     state.allergens.has(v) ? state.allergens.delete(v) : state.allergens.add(v);
     renderAllChips();
   }, true);
@@ -697,7 +750,7 @@ function renderResults() {
   state.shopping = buildShoppingList(r);
   const s = state.shopping;
   const total = currentTotal();
-  const selNames = [...state.cuisines].map(cuisineName).join(' + ');
+  const selNames = [...state.cuisines].map((id) => `${cuisineName(id)} ×${state.cuisineWeights[id] || 3}`).join(' + ');
 
   const awayLine = r.awayCount > 0 ? ` · ${r.awayCount} ${t('kişi için günlük beslenme çantası')}` : '';
   $('#results-summary').innerHTML = `
@@ -925,7 +978,7 @@ function toggleExtra(kind, dayName) {
   const used = Object.values(state.extras[kind]);
   let candidates = pool.filter((r) => !used.includes(r));
   if (!candidates.length) candidates = pool;
-  state.extras[kind][dayName] = candidates[Math.floor(Math.random() * candidates.length)];
+  state.extras[kind][dayName] = weightedPick(candidates, (x) => cuisineWeight(x.cuisine, state));
   renderResults();
 }
 
@@ -941,7 +994,7 @@ function toggleGuest(dayName) {
     const used = Object.values(state.guestRecipes);
     let candidates = pool.filter((r) => !used.includes(r));
     if (!candidates.length) candidates = pool;
-    state.guestRecipes[dayName] = candidates[Math.floor(Math.random() * candidates.length)];
+    state.guestRecipes[dayName] = weightedPick(candidates, (x) => cuisineWeight(x.cuisine, state));
     toast(`${tDay(dayName)}: ${t('Misafir menüsü eklendi. Malzemeler otomatik artırılır.')}`);
   }
   renderResults();
@@ -1051,9 +1104,15 @@ function suggestFromPantry() {
       const missing = req.filter(([n]) => !state.pantry.has(n));
       return { r, total: req.length, matched: matched.length, missing };
     })
-    .filter((c) => c.matched > 0 && c.matched / c.total >= 0.4)
-    .sort((a, b) => (b.matched / b.total) - (a.matched / a.total) || a.missing.length - b.missing.length)
-    .slice(0, 12);
+    /* Yaratıcı mod: az malzemeyle bile niş tarifler — eşik düşük,
+       küçük tarifler (az zorunlu malzeme) tam eşleşmede öne çıkar */
+    .filter((c) => c.matched > 0 && (c.matched / c.total >= 0.2 || c.total <= 5))
+    .sort((a, b) => {
+      const sa = (a.matched / a.total) * 10 + (a.total <= 4 ? 1.5 : 0) + a.matched * 0.15;
+      const sb = (b.matched / b.total) * 10 + (b.total <= 4 ? 1.5 : 0) + b.matched * 0.15;
+      return sb - sa || a.missing.length - b.missing.length;
+    })
+    .slice(0, 16);
 
   if (!candidates.length) {
     out.appendChild(el('p', 'step-hint', t('Bu malzemelerle uygun bir tarif bulunamadı. Birkaç malzeme daha eklemeyi deneyin.')));

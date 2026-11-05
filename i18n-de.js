@@ -409,3 +409,12 @@ Object.assign(window.I18N.de.ui, {
   'Uygulamayı yükle': 'App installieren',
   'Uygulama yüklendi.': 'App installiert.',
 });
+
+/* ---- v5: mutfak ağırlığı + cacık ---- */
+Object.assign(window.I18N.de.ui, {
+  'Ağırlık': 'Gewichtung',
+  'Ağırlık: seçili mutfakta noktalara dokunun — 5 = en sık önerilir, 1 = nadiren. Örnek: Türk 5, Alman 3, İtalyan 2.': 'Gewichtung: Tippen Sie in einer gewählten Küche auf die Punkte — 5 = wird am häufigsten vorgeschlagen, 1 = selten. Beispiel: Türkisch 5, Deutsch 3, Italienisch 2.',
+});
+(function (R) {
+  R['cacik'] = { name: 'Cacık (Joghurt mit Gurken)', steps: ['Gurke raspeln oder klein würfeln.', 'Knoblauch zerdrücken und mit dem Joghurt verrühren.', 'Gurke und fein geschnittene Minze unterrühren.', 'Nach Bedarf mit ein paar Löffeln Wasser verdünnen.', 'Mit Olivenöl und getrockneter Minze kalt servieren.'] };
+})(window.I18N.de.recipes);

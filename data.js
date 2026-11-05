@@ -271,6 +271,10 @@ const RECIPES = [
     [['lahmacun', 4], ['yoğurt', 400], ['marul', 100], ['domates', 150], ['limon', 1], ['maydanoz', 1]],
     ['Lahmacunları fırında ya da tavada ısıtın.', 'Marul, domates ve maydanozu doğrayın.', 'İçine sebzeleri sararak limonla servis edin.', 'Yoğurdu çırpıp ayran yapın.']),
 
+  R('tr', 'lunch', 'cacik', 'Cacık', 10, ['lunch', 'vejetaryen', 'pratik', 'sebze'],
+    [['yoğurt', 500], ['salatalık', 200], ['sarımsak', 5], ['nane', 5], ['zeytinyağı', 20]],
+    ['Salatalığı rendeleyin ya da küçük küp doğrayın.', 'Sarımsağı ezin ve yoğurtla karıştırın.', 'Salatalığı ve ince kıyılmış naneyi ekleyin.', 'İsterseniz birkaç kaşık su ile kıvamını açın.', 'Üzerine zeytinyağı ve kuru nane serperek soğuk servis edin.']),
+
   R('tr', 'lunch', 'sebze-corba-oglen', 'Sebze Çorbası + Ekmek', 30, ['lunch', 'corba', 'vegan'],
     [['havuç', 200], ['pırasa', 150], ['patates', 200], ['kereviz', 100], ['tereyağı', 20], ['ekmek', 1, true]],
     ['Sebzeleri küp doğrayın.', 'Tereyağında 3 dakika soteleyin.', 'Üzerini geçecek kadar su ekleyip 25 dakika pişirin.', 'Blender ile pürüzsüzleştirin.', 'Ekmekle servis edin.']),
@@ -579,7 +583,7 @@ const RECIPES = [
     [['yoğurt', 500], ['bal', 80], ['ceviz', 60]],
     ['Yoğurdu kaselere paylaştırın.', 'Bal ve cevizle süsleyin.', 'Soğuk servis edin.']),
 
-  R('gr', 'dessert', 'baklava', 'Baklava (Hazır) & Dondurma', 5, ['dessert', 'pratik'],
+  R('tr', 'dessert', 'baklava', 'Baklava (Hazır) & Dondurma', 5, ['dessert', 'pratik'],
     [['baklava (hazır)', 300], ['ceviz', 30]],
     ['Baklavayı dilimleyin.', 'İsterseniz hafif ısıtın.', 'Cevizle süsleyin.', 'Yanına dondurma koyarak servis edin.']),
 
