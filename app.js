@@ -1136,7 +1136,9 @@ initInstallPrompt();
 try {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(() => { /* önizleme ortamında sessizce yoksay */ });
+      try {
+        navigator.serviceWorker.register('./sw.js').catch(() => { /* önizleme ortamında sessizce yoksay */ });
+      } catch (e) { /* kısıtlı önizleme ortamında sessizce yoksay */ }
     });
   }
 } catch (e) { /* kısıtlı önizleme ortamında sessizce yoksay */ }
