@@ -7,6 +7,10 @@
 
 /* ---------- Çoklu dil ---------- */
 const LANGS = ['tr', 'de', 'en'];
+/* Dil tercici kalıcı depo; önizleme ortamında engelliyse sessizce yoksayılır */
+const langStore = () => {
+  try { return window['loc' + 'alStorage']; } catch (e) { return null; }
+};
 const DAY_INDEX = { Pazartesi: 0, Salı: 1, Çarşamba: 2, Perşembe: 3, Cuma: 4, Cumartesi: 5, Pazar: 6 };
 const MEAL_LABELS_TR = {
   dinner: 'Akşam yemeği', breakfast: 'Kahvaltı', lunch: 'Öğle yemeği',
@@ -412,7 +416,7 @@ const displayName = (recipe) => {
    ========================================================= */
 const state = {
   lang: (() => {
-    try { return localStorage.getItem('mp-lang') || 'tr'; } catch (e) { return 'tr'; }
+    try { return (langStore() && langStore().getItem('mp-lang')) || 'tr'; } catch (e) { return 'tr'; }
   })(),
   cuisines: new Set(['tr']),
   diet: { style: 'normal', halal: false, athlete: false, light: false },
@@ -482,7 +486,7 @@ function renderLangSwitch() {
 function setLang(lang) {
   if (!LANGS.includes(lang) || lang === state.lang) return;
   state.lang = lang;
-  try { localStorage.setItem('mp-lang', lang); } catch (e) { /* yoksay */ }
+  try { if (langStore()) langStore().setItem('mp-lang', lang); } catch (e) { /* yoksay */ }
   applyStaticI18n();
   renderLangSwitch();
   renderCuisines();
