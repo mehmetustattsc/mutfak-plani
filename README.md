@@ -6,6 +6,8 @@ Ev hanesine göre haftalık yemek planı, tarif, alışveriş listesi ve market 
 
 - **Hane kurulumu**: Kişi sayısı, yaşlar, cinsiyetler ve sabah programı (evde kahvaltı / iş — beslenme / okul — beslenme)
 - **Çoklu mutfak seçimi**: Türk, İtalyan, Fransız, Alman, Yunan, Çin, Hint, Meksika, Japon — birden fazla seçilebilir; seçilmeyen mutfaklardan haftada 1–2 "sürpriz" öneri
+- **Beslenme tercihi**: Hepçil / Vejetaryen / Vegan + Helal (domuz ürünleri hariç), Sporcu (protein ağırlıklı) ve Diyet (hafif yemekler) modları
+- **Çoklu dil**: Türkçe, Almanca ve İngilizce — üstteki dil düğmesiyle anında değişir, 136 tarif dahil tüm arayüz çevrilidir; seçim tarayıcıda hatırlanır
 - **Eleme ve zorunluluklar**: Alerjenler, sevilmeyen gıdalar, mutlaka olması gereken gıdalar
 - **Bütçe aralığı**: Plan, belirlenen aralığa sığacak şekilde oluşturulur
 - **Günlük eklemeler**: Öğle yemeği, tatlı, misafir (kişi sayısı ayarlanabilir) — malzeme miktarları otomatik ölçeklenir
@@ -34,6 +36,7 @@ Ardından tarayıcıda `http://localhost:3000` açın.
 | `index.html` | 4 görünüm: Anasayfa, Haftalık Plan, Dolaptan Yemek, Özel Tarifler |
 | `app.js` | Uygulama mantığı (plan üretimi, alışveriş listesi, dolap önerileri) |
 | `data.js` | 136 tarif, ~94 malzeme, alerjen eşlemeleri, 9 mutfak |
+| `i18n-de.js` / `i18n-en.js` | Almanca ve İngilizce çeviriler (arayüz + 136 tarif) |
 | `prices-data.js` | Gerçek market fiyatları (Open Prices medyanları) |
 | `curated_prices.json` | Fiyat verisinin ham hali |
 | `tools/fetch_prices*.py` | Open Prices API'den fiyat çeken betikler |

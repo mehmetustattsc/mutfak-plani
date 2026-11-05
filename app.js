@@ -1,8 +1,82 @@
 'use strict';
 /* =========================================================
-   MUTFAK PLANI — v3: anasayfa + çoklu mutfak + dolap + özel tarifler
+   MUTFAK PLANI — v4: anasayfa + çoklu mutfak + dolap + özel
+   tarifler + beslenme tercihi + çoklu dil (TR/DE/EN)
    (veri katmanı data.js ve prices-data.js içinde)
    ========================================================= */
+
+/* ---------- Çoklu dil ---------- */
+const LANGS = ['tr', 'de', 'en'];
+const DAY_INDEX = { Pazartesi: 0, Salı: 1, Çarşamba: 2, Perşembe: 3, Cuma: 4, Cumartesi: 5, Pazar: 6 };
+const MEAL_LABELS_TR = {
+  dinner: 'Akşam yemeği', breakfast: 'Kahvaltı', lunch: 'Öğle yemeği',
+  dessert: 'Tatlı', lunchbox: 'Beslenme çantası', special: 'Özel tarif',
+};
+
+function i18nDict() {
+  return (typeof window !== 'undefined' && window.I18N && window.I18N[state.lang]) || null;
+}
+function t(key) {
+  const d = i18nDict();
+  return d && d.ui && d.ui[key] ? d.ui[key] : key;
+}
+function tFmt(key, vars) {
+  let s = t(key);
+  for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(v);
+  return s;
+}
+function tIng(name) {
+  const d = i18nDict();
+  return d && d.ing && d.ing[name] ? d.ing[name] : name;
+}
+function tAllergen(label) {
+  const d = i18nDict();
+  return d && d.allergens && d.allergens[label] ? d.allergens[label] : label;
+}
+function tMust(id) {
+  const d = i18nDict();
+  const rule = MUST_RULES.find((r) => r.id === id) || {};
+  return d && d.mustRules && d.mustRules[id] ? d.mustRules[id] : (rule.label || id);
+}
+function tCuisine(id) {
+  const d = i18nDict();
+  if (d && d.cuisines && d.cuisines[id]) return { name: d.cuisines[id][0], desc: d.cuisines[id][1] };
+  const c = CUISINES.find((x) => x.id === id) || {};
+  return { name: c.name || id, desc: c.desc || '' };
+}
+function tDay(day) {
+  const d = i18nDict();
+  return d && d.days && d.days[DAY_INDEX[day]] ? d.days[DAY_INDEX[day]] : day;
+}
+function tTag(tag) {
+  const d = i18nDict();
+  return d && d.tags && d.tags[tag] ? d.tags[tag] : null;
+}
+function tUnit(u) {
+  const d = i18nDict();
+  return d && d.units && d.units[u] ? d.units[u] : u;
+}
+function tName(r) {
+  const d = i18nDict();
+  return d && d.recipes && d.recipes[r.id] && d.recipes[r.id].name ? d.recipes[r.id].name : r.name;
+}
+function tSteps(r) {
+  const d = i18nDict();
+  return d && d.recipes && d.recipes[r.id] && d.recipes[r.id].steps ? d.recipes[r.id].steps : r.steps;
+}
+function tMealLabel(meal) {
+  const d = i18nDict();
+  return d && d.meals && d.meals[meal] ? d.meals[meal] : MEAL_LABELS_TR[meal];
+}
+function applyStaticI18n() {
+  document.querySelectorAll('[data-i18n]').forEach((n) => { n.textContent = t(n.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach((n) => { n.setAttribute('placeholder', t(n.dataset.i18nPh)); });
+  document.querySelectorAll('[data-i18n-aria]').forEach((n) => { n.setAttribute('aria-label', t(n.dataset.i18nAria)); });
+  document.documentElement.setAttribute('lang', state.lang);
+  document.title = t('Mutfak Planı — Haftalık Yemek ve Alışveriş Planlayıcı');
+  const md = document.querySelector('meta[name="description"]');
+  if (md) md.setAttribute('content', t('Mutfaklarınızı, hane halkınızı, bütçenizi ve alerjilerinizi seçin; haftalık yemek planı, tarifler ve gerçek market fiyatlarıyla alışveriş listesi oluşsun. Dolabınızdakilerle yemek bulun, özel tarifleri keşfedin.'));
+}
 
 /* ---------- Marketler ---------- */
 const STORES = {
@@ -66,9 +140,18 @@ function recipeCost(recipe, store) {
 }
 
 /* ---------- Eleme ---------- */
+const PORK_ING = new Set(['schinken (jambon)', 'speck (domuz pastırması)', 'bratwurst']);
+const PROTEIN_TAGS = ['etli', 'tavuk', 'balik', 'baklagil'];
+const LIGHT_TAGS = ['sebze', 'corba', 'balik'];
+
 function recipeExcluded(recipe, st) {
   const names = recipe.ingredients.map((i) => i[0]);
   if (recipe.allergens.some((a) => st.allergens.has(a))) return true;
+  if (st.diet) {
+    if (st.diet.style === 'vegan' && !recipe.tags.includes('vegan')) return true;
+    if (st.diet.style === 'veg' && !recipe.tags.includes('vegan') && !recipe.tags.includes('vejetaryen')) return true;
+    if (st.diet.halal && names.some((n) => PORK_ING.has(n))) return true;
+  }
   const banned = [...st.dislikes, ...st.excludeFree];
   return names.some((n) => banned.some((b) => b && n.toLowerCase().includes(b.toLowerCase())));
 }
@@ -96,14 +179,27 @@ function poolsFor(st) {
   const sel = st.cuisines;
   const inSel = (r) => sel.has(r.cuisine);
   const ok = (r) => !recipeExcluded(r, st);
+  /* Vegan/vejetaryen seçiminde seçili mutfakta yeterli tarif olmayabilir;
+     o zaman diyet filtresini tüm mutfaklara uygula */
+  const dietStrict = st.diet && st.diet.style !== 'normal';
+  const widen = (pool, need) => (pool.length >= need || !dietStrict) ? pool
+    : RECIPES.filter((r) => r.meal === pool._meal && ok(r));
+  const mk = (meal, extra) => {
+    const base = RECIPES.filter((r) => r.meal === meal && (extra ? extra(r) : inSel(r)) && ok(r));
+    base._meal = meal;
+    return base;
+  };
+  const dinners = mk('dinner');
+  const widened = dinners.length < 7 && dietStrict;
   return {
-    dinners: RECIPES.filter((r) => r.meal === 'dinner' && inSel(r) && ok(r)),
+    dinners: widened ? widen(dinners, 7) : dinners,
     otherDinners: RECIPES.filter((r) => r.meal === 'dinner' && !inSel(r) && ok(r)),
-    breakfasts: RECIPES.filter((r) => r.meal === 'breakfast' && inSel(r) && ok(r)),
-    lunches: RECIPES.filter((r) => r.meal === 'lunch' && inSel(r) && ok(r)),
-    desserts: RECIPES.filter((r) => r.meal === 'dessert' && inSel(r) && ok(r)),
-    lunchboxes: RECIPES.filter((r) => r.meal === 'lunchbox' && (inSel(r) || r.cuisine === 'mix') && ok(r)),
-    guests: RECIPES.filter((r) => r.meal === 'dinner' && r.guest && inSel(r) && ok(r)),
+    breakfasts: widen(mk('breakfast'), 1),
+    lunches: widen(mk('lunch'), 1),
+    desserts: widen(mk('dessert'), 1),
+    lunchboxes: widen(mk('lunchbox', (r) => inSel(r) || r.cuisine === 'mix'), 1),
+    guests: widen(mk('dinner', (r) => r.guest && inSel(r)), 1).filter((r) => r.guest),
+    dietWideCuisine: widened,
   };
 }
 
@@ -162,7 +258,11 @@ function buildPlan(st) {
     const score =
       (mustFree ? Math.min(mustFreeCount(pick), 3) * 4 : 0) +
       new Set(pick.flatMap((r) => r.tags)).size +
-      (ok ? 10 : 0);
+      (ok ? 10 : 0) +
+      (st.diet && st.diet.athlete
+        ? Math.min(pick.filter((r) => r.tags.some((t) => PROTEIN_TAGS.includes(t))).length, 5) * 3 : 0) +
+      (st.diet && st.diet.light
+        ? Math.min(pick.filter((r) => r.tags.some((t) => LIGHT_TAGS.includes(t))).length, 4) * 3 : 0);
     const inRange = total >= st.budgetMin && total <= st.budgetMax;
     const cand = { pick, total, score, ok, distance: Math.abs(total - mid), _in: inRange };
     if (ok) {
@@ -186,6 +286,7 @@ function buildPlan(st) {
       for (let tryN = 0; tryN < 6; tryN++) {
         const cand = surprisePool[Math.floor(Math.random() * surprisePool.length)];
         if (cand.cuisine === chosen.pick[d].cuisine) continue;
+        if (chosen.pick.some((p) => p.id === cand.id)) continue;
         const testPick = chosen.pick.map((r, i) => (i === d ? cand : r));
         if (activeRules.length && !satisfiesRules(testPick, activeRules)) continue;
         chosen.pick[d] = cand;
@@ -217,6 +318,8 @@ function buildPlan(st) {
     rulesSatisfied: chosen.ok, relaxed: !best,
     mustFreeApplied: !!mustFree && mustFreeCount(chosen.pick) >= 2,
     mustFreeName: st.mustFree.trim(),
+    proteinCount: chosen.pick.filter((r) => r.tags.some((t) => PROTEIN_TAGS.includes(t))).length,
+    lightCount: chosen.pick.filter((r) => r.tags.some((t) => LIGHT_TAGS.includes(t))).length,
     pools,
   };
 }
@@ -280,31 +383,39 @@ function buildShoppingList(pr) {
 }
 
 /* ---------- Biçimlendirme ---------- */
-const fmtEur = (v) => v.toFixed(2).replace('.', ',') + ' €';
+const fmtEur = (v) => v.toFixed(2).replace('.', state.lang === 'en' ? '.' : ',') + ' €';
+const fmtNum = (v) => v.toFixed(1).replace('.', state.lang === 'en' ? '.' : ',');
 const fmtQty = (it) => {
-  if (it.unit === 'adet') return `${it.qty} adet`;
+  if (it.unit === 'adet') return `${it.qty} ${tUnit('adet')}`;
   if (it.unit === 'g') return `${it.qty} g`;
-  if (it.unit === 'tutam') return `${it.qty} tutam`;
-  return `${it.qty} tk`;
+  if (it.unit === 'tutam') return `${it.qty} ${tUnit('tutam')}`;
+  return `${it.qty} ${tUnit('tk')}`;
 };
 const TR_MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
 function fmtDate(ym) {
   if (!ym || ym.length < 7) return '';
   const [y, m] = ym.split('-');
-  return `${TR_MONTHS[parseInt(m, 10) - 1]} ${y}`;
+  const d = i18nDict();
+  const months = d && d.months ? d.months : TR_MONTHS;
+  return `${months[parseInt(m, 10) - 1]} ${y}`;
 }
-const cuisineName = (id) => (CUISINES.find((c) => c.id === id) || {}).name || id;
+const cuisineName = (id) => tCuisine(id).name;
 const displayName = (recipe) => {
-  if (!state.allergens.has('gluten')) return recipe.name;
+  const name = tName(recipe);
+  if (!state.allergens.has('gluten')) return name;
   const optBread = recipe.ingredients.some(([n, , opt]) => opt && /ekmek/i.test(n));
-  return optBread ? recipe.name.replace(/\s*\+\s*Ekmek/i, '') : recipe.name;
+  return optBread ? name.replace(/\s*\+\s*(Ekmek|Brot|Bread)$/i, '') : name;
 };
 
 /* =========================================================
    UYGULAMA DURUMU & ARAYÜZ
    ========================================================= */
 const state = {
+  lang: (() => {
+    try { return localStorage.getItem('mp-lang') || 'tr'; } catch (e) { return 'tr'; }
+  })(),
   cuisines: new Set(['tr']),
+  diet: { style: 'normal', halal: false, athlete: false, light: false },
   members: [
     { age: 35, gender: 'e', morning: 'ev' },
     { age: 33, gender: 'k', morning: 'ev' },
@@ -354,22 +465,78 @@ function showView(name) {
   window.scrollTo({ top: 0 });
 }
 
-/* ---------- Mutfaqı kartları (çoklu seçim) ---------- */
+/* ---------- Dil değiştirme ---------- */
+function renderLangSwitch() {
+  const box = $('#lang-switch');
+  if (!box) return;
+  box.innerHTML = '';
+  LANGS.forEach((lg) => {
+    const b = el('button', 'lang-btn' + (state.lang === lg ? ' is-active' : ''), lg.toUpperCase());
+    b.type = 'button';
+    b.setAttribute('data-testid', `button-lang-${lg}`);
+    b.setAttribute('aria-pressed', state.lang === lg ? 'true' : 'false');
+    b.addEventListener('click', () => setLang(lg));
+    box.appendChild(b);
+  });
+}
+function setLang(lang) {
+  if (!LANGS.includes(lang) || lang === state.lang) return;
+  state.lang = lang;
+  try { localStorage.setItem('mp-lang', lang); } catch (e) { /* yoksay */ }
+  applyStaticI18n();
+  renderLangSwitch();
+  renderCuisines();
+  renderDiet();
+  renderMembers();
+  renderAllChips();
+  renderFridgeDatalist();
+  renderFridgeChips();
+  renderSpecials();
+  if (state.planResult) renderResults();
+  if (state.pantry.size > 0) suggestFromPantry();
+}
+
+/* ---------- Mutfak kartları (çoklu seçim) ---------- */
 function renderCuisines() {
   const grid = $('#cuisine-grid');
   grid.innerHTML = '';
   CUISINES.filter((c) => c.id !== 'mix').forEach((c) => {
     const on = state.cuisines.has(c.id);
+    const ci = tCuisine(c.id);
     const card = el('button', 'cuisine-card' + (on ? ' is-selected' : ''));
     card.type = 'button';
     card.setAttribute('aria-pressed', on ? 'true' : 'false');
     card.setAttribute('data-testid', `card-cuisine-${c.id}`);
-    card.innerHTML = `<span class="cuisine-name">${c.name}</span><span class="cuisine-desc">${c.desc}</span>`;
+    card.innerHTML = `<span class="cuisine-name">${ci.name}</span><span class="cuisine-desc">${ci.desc}</span>`;
     card.addEventListener('click', () => {
       state.cuisines.has(c.id) ? state.cuisines.delete(c.id) : state.cuisines.add(c.id);
       renderCuisines();
     });
     grid.appendChild(card);
+  });
+}
+
+/* ---------- Beslenme tercihi ---------- */
+function dietExtraOptions() {
+  return [
+    ['halal', t('Helal (domuz ürünleri hariç)')],
+    ['athlete', t('Sporcu (protein ağırlıklı)')],
+    ['light', t('Diyet (hafif yemekler öncelikli)')],
+  ];
+}
+
+const DIET_STYLE_LABELS = { normal: 'Hepçil', veg: 'Vejetaryen', vegan: 'Vegan' };
+function renderDiet() {
+  const group = $('#diet-style-group');
+  group.querySelectorAll('button').forEach((b) => {
+    b.setAttribute('aria-checked', String(state.diet.style === b.dataset.dietStyle));
+    b.classList.toggle('is-active', state.diet.style === b.dataset.dietStyle);
+    b.textContent = t(DIET_STYLE_LABELS[b.dataset.dietStyle]);
+    b.onclick = () => { state.diet.style = b.dataset.dietStyle; renderDiet(); };
+  });
+  renderChips('#diet-chips', dietExtraOptions(), new Set(Object.keys(state.diet).filter((k) => k !== 'style' && state.diet[k])), (v) => {
+    state.diet[v] = !state.diet[v];
+    renderDiet();
   });
 }
 
@@ -380,42 +547,42 @@ function renderMembers() {
   state.members.forEach((m, idx) => {
     const row = el('div', 'member-row');
     const ageField = el('label', 'field');
-    ageField.innerHTML = `<span>Yaş</span>`;
+    ageField.innerHTML = `<span>${t('Yaş')}</span>`;
     const ageInput = el('input');
     ageInput.type = 'number'; ageInput.min = 0; ageInput.max = 110; ageInput.value = m.age;
     ageInput.setAttribute('data-testid', `input-age-${idx}`);
-    ageInput.setAttribute('aria-label', `${idx + 1}. kişinin yaşı`);
+    ageInput.setAttribute('aria-label', `${idx + 1}. ${t('kişinin yaşı')}`);
     ageInput.addEventListener('input', () => { m.age = parseInt(ageInput.value, 10) || 0; updatePortionNote(); });
     ageField.appendChild(ageInput);
 
     const gField = el('label', 'field');
-    gField.innerHTML = `<span>Cinsiyet</span>`;
+    gField.innerHTML = `<span>${t('Cinsiyet')}</span>`;
     const gSel = el('select');
     gSel.setAttribute('data-testid', `select-gender-${idx}`);
-    gSel.setAttribute('aria-label', `${idx + 1}. kişinin cinsiyeti`);
-    gSel.innerHTML = `<option value="k"${m.gender === 'k' ? ' selected' : ''}>Kadın</option><option value="e"${m.gender === 'e' ? ' selected' : ''}>Erkek</option>`;
+    gSel.setAttribute('aria-label', `${idx + 1}. ${t('kişinin cinsiyeti')}`);
+    gSel.innerHTML = `<option value="k"${m.gender === 'k' ? ' selected' : ''}>${t('Kadın')}</option><option value="e"${m.gender === 'e' ? ' selected' : ''}>${t('Erkek')}</option>`;
     gSel.addEventListener('change', () => { m.gender = gSel.value; updatePortionNote(); });
     gField.appendChild(gSel);
 
     const mField = el('label', 'field field-morning');
-    mField.innerHTML = `<span>Sabah programı</span>`;
+    mField.innerHTML = `<span>${t('Sabah programı')}</span>`;
     const mSel = el('select');
     mSel.setAttribute('data-testid', `select-morning-${idx}`);
-    mSel.setAttribute('aria-label', `${idx + 1}. kişinin sabah programı`);
+    mSel.setAttribute('aria-label', `${idx + 1}. ${t('kişinin sabah programı')}`);
     const mVal = m.morning || 'ev';
     mSel.innerHTML = `
-      <option value="ev"${mVal === 'ev' ? ' selected' : ''}>Evde kahvaltı</option>
-      <option value="is"${mVal === 'is' ? ' selected' : ''}>İş — beslenme</option>
-      <option value="okul"${mVal === 'okul' ? ' selected' : ''}>Okul — beslenme</option>`;
+      <option value="ev"${mVal === 'ev' ? ' selected' : ''}>${t('Evde kahvaltı')}</option>
+      <option value="is"${mVal === 'is' ? ' selected' : ''}>${t('İş — beslenme')}</option>
+      <option value="okul"${mVal === 'okul' ? ' selected' : ''}>${t('Okul — beslenme')}</option>`;
     mSel.addEventListener('change', () => { m.morning = mSel.value; updatePortionNote(); });
     mField.appendChild(mSel);
 
-    const rm = el('button', 'btn btn-remove', 'Kaldır');
+    const rm = el('button', 'btn btn-remove', t('Kaldır'));
     rm.type = 'button';
     rm.setAttribute('data-testid', `button-remove-member-${idx}`);
-    rm.setAttribute('aria-label', `${idx + 1}. kişiyi kaldır`);
+    rm.setAttribute('aria-label', `${idx + 1}. ${t('kişiyi kaldır')}`);
     rm.addEventListener('click', () => {
-      if (state.members.length <= 1) { toast('En az bir kişi gerekli.'); return; }
+      if (state.members.length <= 1) { toast(t('En az bir kişi gerekli.')); return; }
       state.members.splice(idx, 1);
       renderMembers();
     });
@@ -429,7 +596,7 @@ function renderMembers() {
 function updatePortionNote() {
   const p = totalPortions(state.members);
   $('#portion-note').textContent =
-    `Hane toplamı: ${p.toFixed(1).replace('.', ',')} porsiyon · yetişkin kadın = 1,0 · yetişkin erkek = 1,15 · çocuklar yaşa göre daha az. Malzeme miktarları buna göre otomatik ölçeklenir.`;
+    `${t('Hane toplamı')}: ${fmtNum(p)} ${t('porsiyon')} · ${t('yetişkin kadın = 1,0')} · ${t('yetişkin erkek = 1,15')} · ${t('çocuklar yaşa göre daha az')}. ${t('Malzeme miktarları buna göre otomatik ölçeklenir.')}`;
 }
 
 /* ---------- Chip grupları ---------- */
@@ -449,15 +616,15 @@ function renderChips(containerSel, options, activeSet, onToggle, excludeStyle) {
 }
 
 function renderAllChips() {
-  renderChips('#allergen-chips', ALLERGEN_OPTIONS, state.allergens, (v) => {
+  renderChips('#allergen-chips', ALLERGEN_OPTIONS.map((a) => [a, tAllergen(a)]), state.allergens, (v) => {
     state.allergens.has(v) ? state.allergens.delete(v) : state.allergens.add(v);
     renderAllChips();
   }, true);
-  renderChips('#dislike-chips', DISLIKE_OPTIONS, state.dislikes, (v) => {
+  renderChips('#dislike-chips', DISLIKE_OPTIONS.map((d) => [d, tIng(d)]), state.dislikes, (v) => {
     state.dislikes.has(v) ? state.dislikes.delete(v) : state.dislikes.add(v);
     renderAllChips();
   }, true);
-  renderChips('#must-chips', MUST_RULES.map((r) => [r.id, r.label]), state.mustRules, (v) => {
+  renderChips('#must-chips', MUST_RULES.map((r) => [r.id, tMust(r.id)]), state.mustRules, (v) => {
     state.mustRules.has(v) ? state.mustRules.delete(v) : state.mustRules.add(v);
     renderAllChips();
   }, false);
@@ -465,10 +632,10 @@ function renderAllChips() {
 
 /* ---------- Plan üretimi ---------- */
 function generateAndShow() {
-  if (state.cuisines.size === 0) { toast('En az bir mutfak seçin.'); return; }
+  if (state.cuisines.size === 0) { toast(t('En az bir mutfak seçin.')); return; }
   const mn = parseFloat($('#budget-min').value);
   const mx = parseFloat($('#budget-max').value);
-  if (!(mn >= 10 && mx >= 10 && mn <= mx)) { toast('Geçerli bir bütçe aralığı girin (alt ≤ üst).'); return; }
+  if (!(mn >= 10 && mx >= 10 && mn <= mx)) { toast(t('Geçerli bir bütçe aralığı girin (alt ≤ üst).')); return; }
   state.budgetMin = mn; state.budgetMax = mx;
   state.excludeFree = $('#exclude-free').value.split(',').map((s) => s.trim()).filter(Boolean);
   state.mustFree = $('#must-free').value;
@@ -478,14 +645,14 @@ function generateAndShow() {
   state.extras = { lunches: {}, desserts: {} };
 
   const result = buildPlan(state);
-  if (result.error) { toast(result.error); return; }
+  if (result.error) { toast(t(result.error)); return; }
   state.planResult = result;
   renderResults();
   $('[data-view="plan"]').hidden = false;
   showView('plan');
   switchTab('plan');
   if (!result.rulesSatisfied) {
-    toast('Not: Seçimlerinizle tüm şartlar aynı anda karşılanamadı; en yakın plan oluşturuldu.');
+    toast(t('Not: Seçimlerinizle tüm şartlar aynı anda karşılanamadı; en yakın plan oluşturuldu.'));
   }
 }
 
@@ -510,7 +677,8 @@ function tagPill(tag) {
     baklagil: 'Baklagil', tahil: 'Pilav/Bulgur', makarna: 'Makarna', etli: 'Etli', tavuk: 'Tavuk',
     sebze: 'Sebze', misafir: 'Misafir', firin: 'Fırın', ozel: 'Özel',
   };
-  return labels[tag] ? `<span class="tag t-${tag}">${labels[tag]}</span>` : '';
+  const label = tTag(tag) || labels[tag];
+  return label ? `<span class="tag t-${tag}">${label}</span>` : '';
 }
 
 function renderResults() {
@@ -521,13 +689,13 @@ function renderResults() {
   const total = currentTotal();
   const selNames = [...state.cuisines].map(cuisineName).join(' + ');
 
-  const awayLine = r.awayCount > 0 ? ` · ${r.awayCount} kişi için günlük beslenme çantası` : '';
+  const awayLine = r.awayCount > 0 ? ` · ${r.awayCount} ${t('kişi için günlük beslenme çantası')}` : '';
   $('#results-summary').innerHTML = `
-    <h2>Haftalık planınız hazır</h2>
-    <p>${selNames} · ${state.members.length} kişi · ${r.portions.toFixed(1).replace('.', ',')} porsiyon${awayLine} ·
-    haftalık tüketim maliyeti <strong>${fmtEur(total)}</strong>
-    (bütçe aralığınız ${fmtEur(r.budgetMin)} – ${fmtEur(r.budgetMax)}) ·
-    tam paket alımlarıyla alışveriş sepeti ${fmtEur(s.grandTotal)}</p>`;
+    <h2>${t('Haftalık planınız hazır')}</h2>
+    <p>${selNames} · ${state.members.length} ${t('kişi')} · ${fmtNum(r.portions)} ${t('porsiyon')}${awayLine} ·
+    ${t('haftalık tüketim maliyeti')} <strong>${fmtEur(total)}</strong>
+    (${t('bütçe aralığınız')} ${fmtEur(r.budgetMin)} – ${fmtEur(r.budgetMax)}) ·
+    ${t('tam paket alımlarıyla alışveriş sepeti')} ${fmtEur(s.grandTotal)}</p>`;
 
   /* ---------- PLAN PANELİ ---------- */
   const planPanel = $('#panel-plan');
@@ -541,17 +709,23 @@ function renderResults() {
   barWrap.innerHTML = `
     <div class="budget-bar-top">
       <span class="budget-total">${fmtEur(total)}</span>
-      <span class="budget-range">Bütçe aralığı: ${fmtEur(r.budgetMin)} – ${fmtEur(r.budgetMax)} · misafir, öğle ve tatlı eklemeleri dahil</span>
+      <span class="budget-range">${t('Bütçe aralığı:')} ${fmtEur(r.budgetMin)} – ${fmtEur(r.budgetMax)} · ${t('misafir, öğle ve tatlı eklemeleri dahil')}</span>
     </div>
-    <div class="budget-track" role="img" aria-label="Toplam maliyet ${fmtEur(total)}, bütçe aralığı ${fmtEur(r.budgetMin)} ile ${fmtEur(r.budgetMax)} arasında">
+    <div class="budget-track" role="img" aria-label="${fmtEur(total)}">
       <div class="budget-range-band" style="left:${bandL}%; width:${Math.max(bandR - bandL, 0.5)}%"></div>
       <div class="budget-fill" style="width:${fillW}%"></div>
     </div>`;
   planPanel.appendChild(barWrap);
 
   const notes = [];
-  if (r.mustFreeApplied) notes.push(`"${r.mustFreeName}" içeren en az 2 yemek plana alındı.`);
-  if (!r.rulesSatisfied) notes.push('Bazı şartlar eleme kurallarıyla çakıştığı için uygulanamadı.');
+  if (r.mustFreeApplied) notes.push(tFmt('"{x}" içeren en az 2 yemek plana alındı.', { x: r.mustFreeName }));
+  if (!r.rulesSatisfied) notes.push(t('Bazı şartlar eleme kurallarıyla çakıştığı için uygulanamadı.'));
+  if (state.diet.style === 'vegan') notes.push(t('Vegan seçim: tüm tarifler bitkisel.'));
+  if (state.diet.style === 'veg') notes.push(t('Vejetaryen seçim: et ve balık içeren tarifler çıkarıldı.'));
+  if (state.diet.halal) notes.push(t('Helal seçim: domuz ürünleri (jambon, speck, bratwurst) içeren tarifler çıkarıldı.'));
+  if (state.diet.athlete) notes.push(tFmt('Sporcu modu: haftanın {n} akşam yemeği protein ağırlıklı (et, tavuk, balık, baklagil).', { n: r.proteinCount }));
+  if (state.diet.light) notes.push(tFmt('Diyet modu: haftanın {n} akşam yemeği hafif (sebze, çorba, balık) ağırlıklı.', { n: r.lightCount }));
+  if (r.pools && r.pools.dietWideCuisine) notes.push(t('Seçili mutfakta yeterli uygun tarif olmadığı için tüm mutfaklardan seçim yapıldı.'));
   if (notes.length) planPanel.appendChild(el('p', 'step-hint', notes.join(' ')));
 
   const grid = el('div', 'week-grid');
@@ -569,7 +743,7 @@ function renderResults() {
     card.setAttribute('data-testid', `card-day-${i}`);
     card.innerHTML = `
       <div class="day-card-head">
-        <span class="day-name">${day.day}${gCount > 0 ? ` <span class="guest-badge">misafirli (${gCount})</span>` : ''}</span>
+        <span class="day-name">${tDay(day.day)}${gCount > 0 ? ` <span class="guest-badge">${t('misafirli')} (${gCount})</span>` : ''}</span>
         <span class="day-cost">${fmtEur(bCost + dCost + lCost + dsCost + lbCost)}</span>
       </div>`;
 
@@ -580,41 +754,41 @@ function renderResults() {
       btn.type = 'button';
       btn.setAttribute('data-testid', `button-meal-${i}-${label}`);
       const perServing = meal.meal === 'lunchbox'
-        ? `${fmtEur(recipeCost(meal))}/kişi`
-        : `${fmtEur(recipeCost(meal) / meal.serves)}/porsiyon`;
+        ? `${fmtEur(recipeCost(meal))}${t('/kişi')}`
+        : `${fmtEur(recipeCost(meal) / meal.serves)}${t('/porsiyon')}`;
       btn.innerHTML = `
         <span class="meal-name">${displayName(meal)}${extraBadge || ''}</span>
-        <span class="meal-meta">${meal.time} dk · ${perServing}</span>`;
+        <span class="meal-meta">${meal.time} ${t('dk')} · ${perServing}</span>`;
       btn.addEventListener('click', () => openModal(meal, { day: day.day, scale: dinner.scale }));
       slot.append(lab, btn);
       return slot;
     };
 
-    if (day.breakfast) card.appendChild(mkMeal('Kahvaltı', day.breakfast, 'is-breakfast'));
-    if (day.lunchbox) card.appendChild(mkMeal('Beslenme (iş/okul)', day.lunchbox, 'is-lunchbox'));
+    if (day.breakfast) card.appendChild(mkMeal(t('Kahvaltı'), day.breakfast, 'is-breakfast'));
+    if (day.lunchbox) card.appendChild(mkMeal(t('Beslenme (iş/okul)'), day.lunchbox, 'is-lunchbox'));
     const surpriseBadge = day.surprise ? `<span class="surprise-badge">${cuisineName(day.surprise.cuisine)}</span>` : '';
-    card.appendChild(mkMeal('Akşam', dinner.recipe, 'is-dinner', surpriseBadge));
+    card.appendChild(mkMeal(t('Akşam'), dinner.recipe, 'is-dinner', surpriseBadge));
 
     if (state.extras.lunches[day.day]) {
-      card.appendChild(mkMeal('Öğle', state.extras.lunches[day.day], 'is-lunch'));
+      card.appendChild(mkMeal(t('Öğle'), state.extras.lunches[day.day], 'is-lunch'));
     }
     if (state.extras.desserts[day.day]) {
-      card.appendChild(mkMeal('Tatlı', state.extras.desserts[day.day], 'is-dessert'));
+      card.appendChild(mkMeal(t('Tatlı'), state.extras.desserts[day.day], 'is-dessert'));
     }
 
     /* Gün bazlı ekleme düğmeleri */
     const extraRow = el('div', 'extra-row');
-    const lunchBtn = el('button', 'btn btn-ghost btn-sm', state.extras.lunches[day.day] ? 'Öğle kaldır' : '+ Öğle');
+    const lunchBtn = el('button', 'btn btn-ghost btn-sm', state.extras.lunches[day.day] ? t('Öğle kaldır') : t('+ Öğle'));
     lunchBtn.type = 'button';
     lunchBtn.setAttribute('data-testid', `button-lunch-${i}`);
     lunchBtn.addEventListener('click', () => toggleExtra('lunches', day.day));
-    const dessertBtn = el('button', 'btn btn-ghost btn-sm', state.extras.desserts[day.day] ? 'Tatlı kaldır' : '+ Tatlı');
+    const dessertBtn = el('button', 'btn btn-ghost btn-sm', state.extras.desserts[day.day] ? t('Tatlı kaldır') : t('+ Tatlı'));
     dessertBtn.type = 'button';
     dessertBtn.setAttribute('data-testid', `button-dessert-${i}`);
     dessertBtn.addEventListener('click', () => toggleExtra('desserts', day.day));
     extraRow.append(lunchBtn, dessertBtn);
     if (gCount === 0) {
-      const guestBtn = el('button', 'btn btn-ghost btn-sm', '+ Misafir');
+      const guestBtn = el('button', 'btn btn-ghost btn-sm', t('+ Misafir'));
       guestBtn.type = 'button';
       guestBtn.setAttribute('data-testid', `button-guest-${i}`);
       guestBtn.addEventListener('click', () => toggleGuest(day.day));
@@ -624,12 +798,12 @@ function renderResults() {
       stepper.setAttribute('data-testid', `guest-stepper-${i}`);
       const dec = el('button', 'btn btn-ghost btn-sm', '−');
       dec.type = 'button';
-      dec.setAttribute('aria-label', 'Misafir azalt');
-      const cnt = el('span', 'guest-count', `${gCount} misafir`);
+      dec.setAttribute('aria-label', t('Misafir azalt'));
+      const cnt = el('span', 'guest-count', `${gCount} ${t('misafir')}`);
       const inc = el('button', 'btn btn-ghost btn-sm', '+');
       inc.type = 'button';
-      inc.setAttribute('aria-label', 'Misafir artır');
-      const off = el('button', 'btn btn-ghost btn-sm', 'Misafir kaldır');
+      inc.setAttribute('aria-label', t('Misafir artır'));
+      const off = el('button', 'btn btn-ghost btn-sm', t('Misafir kaldır'));
       off.type = 'button';
       dec.addEventListener('click', () => adjustGuest(day.day, -1));
       inc.addEventListener('click', () => adjustGuest(day.day, 1));
@@ -657,7 +831,7 @@ function renderResults() {
     head.setAttribute('data-testid', `button-store-head-${store}`);
     head.innerHTML = `
       <span class="store-name">${store}</span>
-      <span class="store-sub">${storeItems.length} ürün</span>
+      <span class="store-sub">${storeItems.length} ${t('ürün')}</span>
       <span class="store-total">${fmtEur(s.storeTotals[store])}</span>`;
     const body = el('div', 'store-body');
     storeItems.forEach((it) => {
@@ -667,9 +841,9 @@ function renderResults() {
       row.innerHTML = `
         <label for="${id}">
           <input type="checkbox" id="${id}"${it.checked ? ' checked' : ''}>
-          <span class="shop-item-name">${it.name}<span class="shop-item-qty"> — ${fmtQty(it)}</span></span>
+          <span class="shop-item-name">${tIng(it.name)}<span class="shop-item-qty"> — ${fmtQty(it)}</span></span>
         </label>
-        <span class="shop-item-meta">${it.real ? `<span class="price-badge is-real" title="Open Prices topluluk verisi, ${fmtDate(it.date)}">gerçek ${fmtDate(it.date)}</span>` : '<span class="price-badge">tahmini</span>'}</span>
+        <span class="shop-item-meta">${it.real ? `<span class="price-badge is-real" title="${t('Open Prices topluluk verisi, ')}${fmtDate(it.date)}">${t('gerçek')} ${fmtDate(it.date)}</span>` : `<span class="price-badge">${t('tahmini')}</span>`}</span>
         <span class="shop-item-price">${fmtEur(it.price)}</span>`;
       const chk = row.querySelector('input');
       chk.addEventListener('change', () => {
@@ -688,13 +862,13 @@ function renderResults() {
   }
   const realPct = s.items.length ? Math.round((s.realCount / s.items.length) * 100) : 0;
   shopPanel.appendChild(el('p', 'shopping-footnote',
-    `Sepet tutarı: ${fmtEur(s.grandTotal)} (tam paket/gramaj yuvarlamasıyla — tüketim maliyeti bundan düşüktür) · Kalemlerin %${realPct}'i gerçek market fiyatları (Open Prices topluluk verisi, son 12 ay medyanı), kalanı tahmini. Mağazaya ve sezona göre değişebilir.`));
+    tFmt('Sepet tutarı: {v} (tam paket/gramaj yuvarlamasıyla — tüketim maliyeti bundan düşüktür) · Kalemlerin %{p}si gerçek market fiyatları (Open Prices topluluk verisi, son 12 ay medyanı), kalanı tahmini. Mağazaya ve sezona göre değişebilir.', { v: fmtEur(s.grandTotal), p: realPct })));
 
   /* ---------- KARŞILAŞTIRMA PANELİ ---------- */
   const cmpPanel = $('#panel-compare');
   cmpPanel.innerHTML = '';
   cmpPanel.appendChild(el('p', 'compare-note',
-    'Aynı sepetin tamamı tek bir markette alınırsa tahmini maliyeti aşağıda. "En uygun" market tek seferde her şeyi almak isteyenler için. Alışveriş listesinde her kalem, gerçek fiyatı olan marketten seçilir.'));
+    t('Aynı sepetin tamamı tek bir markette alınırsa tahmini maliyeti aşağıda. "En uygun" market tek seferde her şeyi almak isteyenler için. Alışveriş listesinde her kalem, gerçek fiyatı olan marketten seçilir.')));
   const rows = STORE_LIST
     .map((store) => {
       let tot = 0, realN = 0;
@@ -711,18 +885,18 @@ function renderResults() {
   const table = el('table', 'compare-table');
   table.setAttribute('data-testid', 'table-compare');
   table.innerHTML = `
-    <thead><tr><th>Market</th><th>Tahmini sepet</th><th>Gerçek fiyat</th><th>Fark</th></tr></thead>
+    <thead><tr><th>${t('Market')}</th><th>${t('Tahmini sepet')}</th><th>${t('Gerçek fiyat')}</th><th>${t('Fark')}</th></tr></thead>
     <tbody>${rows.map((row) => `
       <tr${row.store === bestStore ? ' class="is-best"' : ''}>
-        <td>${row.store}${row.store === bestStore ? '<span class="badge-best">En uygun</span>' : ''}</td>
+        <td>${row.store}${row.store === bestStore ? `<span class="badge-best">${t('En uygun')}</span>` : ''}</td>
         <td>${fmtEur(row.total)}</td>
-        <td>${row.realN}/${s.items.length} kalem</td>
+        <td>${row.realN}/${s.items.length} ${t('kalem')}</td>
         <td>${row.store === bestStore ? '—' : '+' + fmtEur(row.total - rows[0].total)}</td>
       </tr>`).join('')}</tbody>`;
   wrap.appendChild(table);
   cmpPanel.appendChild(wrap);
   cmpPanel.appendChild(el('p', 'shopping-footnote',
-    "Gerçek fiyatlar Open Prices (prices.openfoodfacts.org) topluluk verilerinden; 2025 başından bu yana Almanya'da kaydedilmiş fiyatların market bazındaki medyanıdır."));
+    t("Gerçek fiyatlar Open Prices (prices.openfoodfacts.org) topluluk verilerinden; 2025 başından bu yana Almanya'da kaydedilmiş fiyatların market bazındaki medyanıdır.")));
 }
 
 /* ---------- Öğle / tatlı ekleme ---------- */
@@ -735,7 +909,7 @@ function toggleExtra(kind, dayName) {
   }
   const pool = kind === 'lunches' ? pr.pools.lunches : pr.pools.desserts;
   if (!pool.length) {
-    toast(kind === 'lunches' ? 'Seçimlerinizle uygun öğle yemeği kalmadı (eleme çok kısıtlayıcı).' : 'Seçimlerinizle uygun tatlı kalmadı.');
+    toast(kind === 'lunches' ? t('Seçimlerinizle uygun öğle yemeği kalmadı (eleme çok kısıtlayıcı).') : t('Seçimlerinizle uygun tatlı kalmadı.'));
     return;
   }
   const used = Object.values(state.extras[kind]);
@@ -758,7 +932,7 @@ function toggleGuest(dayName) {
     let candidates = pool.filter((r) => !used.includes(r));
     if (!candidates.length) candidates = pool;
     state.guestRecipes[dayName] = candidates[Math.floor(Math.random() * candidates.length)];
-    toast(`${dayName} günü için misafir menüsü eklendi. Malzemeler otomatik artırılır.`);
+    toast(`${tDay(dayName)}: ${t('Misafir menüsü eklendi. Malzemeler otomatik artırılır.')}`);
   }
   renderResults();
 }
@@ -776,31 +950,30 @@ function switchTab(name) {
 }
 
 /* ---------- Tarif modalı ---------- */
-const MEAL_LABELS = { dinner: 'Akşam yemeği', breakfast: 'Kahvaltı', lunch: 'Öğle yemeği', dessert: 'Tatlı', lunchbox: 'Beslenme çantası', special: 'Özel tarif' };
 function openModal(recipe, ctx) {
   const r = state.planResult;
   const isLb = recipe.meal === 'lunchbox';
   const isSpecial = recipe.meal === 'special';
   const scale = isLb ? 1 : (ctx && ctx.scale ? ctx.scale : (r ? r.scale : 1));
   const cost = recipeCost(recipe) * (isLb ? (r && r.awayCount) || 1 : scale);
-  const perLabel = isSpecial ? `${fmtEur(recipeCost(recipe))} (4 kişilik)`
-    : isLb ? `${fmtEur(recipeCost(recipe))}/kişi`
-    : `${fmtEur(recipeCost(recipe) / recipe.serves)}/porsiyon`;
+  const perLabel = isSpecial ? `${fmtEur(recipeCost(recipe))} ${t('(4 kişilik)')}`
+    : isLb ? `${fmtEur(recipeCost(recipe))}${t('/kişi')}`
+    : `${fmtEur(recipeCost(recipe) / recipe.serves)}${t('/porsiyon')}`;
   const modal = $('#modal-inner');
   modal.innerHTML = `
-    <button type="button" class="modal-close" data-testid="button-modal-close" aria-label="Kapat">Kapat ✕</button>
+    <button type="button" class="modal-close" data-testid="button-modal-close" aria-label="${t('Kapat')}">${t('Kapat')} ✕</button>
     <h3 id="modal-title">${displayName(recipe)}</h3>
-    <p class="modal-sub">${MEAL_LABELS[recipe.meal]} · ${cuisineName(recipe.cuisine)} · ${recipe.time} dk · ${perLabel}${isSpecial ? '' : ` · hane için: ${fmtEur(cost)}`}</p>
+    <p class="modal-sub">${tMealLabel(recipe.meal)} · ${cuisineName(recipe.cuisine)} · ${recipe.time} ${t('dk')} · ${perLabel}${isSpecial ? '' : ` · ${t('hane için:')} ${fmtEur(cost)}`}</p>
     <div class="tag-row">${recipe.tags.filter((t) => !['kahvalti', 'lunch'].includes(t)).map(tagPill).join('')}</div>
-    <h4>${isLb ? 'Malzemeler (kişi başı)' : isSpecial ? 'Malzemeler' : 'Malzemeler (haneye göre ölçekli)'}</h4>
+    <h4>${isLb ? t('Malzemeler (kişi başı)') : isSpecial ? t('Malzemeler') : t('Malzemeler (haneye göre ölçekli)')}</h4>
     <ul class="ingredients">${recipe.ingredients.map(([name, qty]) => {
       const ing = ING[name];
       const q = roundQty(qty * (isSpecial ? 1 : scale), ing.unit);
-      const unit = ing.unit === 'g' ? 'g' : ing.unit === 'adet' ? 'adet' : ing.unit === 'tutam' ? 'tutam' : 'tk';
-      return `<li><span>${name}</span><span>${q} ${unit}</span></li>`;
+      const unit = ing.unit === 'g' ? 'g' : tUnit(ing.unit);
+      return `<li><span>${tIng(name)}</span><span>${q} ${unit}</span></li>`;
     }).join('')}</ul>
-    <h4>Hazırlanışı</h4>
-    <ol class="steps">${recipe.steps.map((s) => `<li>${s}</li>`).join('')}</ol>`;
+    <h4>${t('Hazırlanışı')}</h4>
+    <ol class="steps">${tSteps(recipe).map((s) => `<li>${s}</li>`).join('')}</ol>`;
   $('#modal').hidden = false;
   document.body.style.overflow = 'hidden';
   modal.querySelector('.modal-close').addEventListener('click', closeModal);
@@ -824,10 +997,10 @@ function renderFridgeChips() {
   const c = $('#fridge-chips');
   c.innerHTML = '';
   state.pantry.forEach((name) => {
-    const chip = el('button', 'chip is-on', `${name} ✕`);
+    const chip = el('button', 'chip is-on', `${tIng(name)} ✕`);
     chip.type = 'button';
     chip.setAttribute('data-testid', `chip-pantry-${name}`);
-    chip.setAttribute('aria-label', `${name} çıkar`);
+    chip.setAttribute('aria-label', `${tIng(name)} ${t('çıkar')}`);
     chip.addEventListener('click', () => {
       state.pantry.delete(name);
       renderFridgeChips();
@@ -846,7 +1019,7 @@ function addPantryItem() {
   let match = names.find((n) => n.toLowerCase() === raw)
     || names.find((n) => n.toLowerCase().startsWith(raw))
     || names.find((n) => n.toLowerCase().includes(raw));
-  if (!match) { toast(`"${raw}" malzeme listesinde yok. Listeden seçmeyi deneyin.`); return; }
+  if (!match) { toast(tFmt('"{x}" malzeme listesinde yok. Listeden seçmeyi deneyin.', { x: raw })); return; }
   state.pantry.add(match);
   input.value = '';
   renderFridgeChips();
@@ -856,7 +1029,7 @@ function suggestFromPantry() {
   const out = $('#fridge-results');
   out.innerHTML = '';
   if (state.pantry.size === 0) {
-    out.appendChild(el('p', 'step-hint', 'Önce dolabınızdaki birkaç malzemeyi ekleyin.'));
+    out.appendChild(el('p', 'step-hint', t('Önce dolabınızdaki birkaç malzemeyi ekleyin.')));
     return;
   }
   const candidates = RECIPES
@@ -873,11 +1046,11 @@ function suggestFromPantry() {
     .slice(0, 12);
 
   if (!candidates.length) {
-    out.appendChild(el('p', 'step-hint', 'Bu malzemelerle uygun bir tarif bulunamadı. Birkaç malzeme daha eklemeyi deneyin.'));
+    out.appendChild(el('p', 'step-hint', t('Bu malzemelerle uygun bir tarif bulunamadı. Birkaç malzeme daha eklemeyi deneyin.')));
     return;
   }
 
-  const head = el('h3', 'fridge-results-title', `Dolabınıza göre ${candidates.length} öneri`);
+  const head = el('h3', 'fridge-results-title', tFmt('Dolabınıza göre {n} öneri', { n: candidates.length }));
   out.appendChild(head);
 
   const grid = el('div', 'fridge-grid');
@@ -890,12 +1063,12 @@ function suggestFromPantry() {
         <span class="meal-name">${displayName(c.r)}</span>
         <span class="surprise-badge">${cuisineName(c.r.cuisine)}</span>
       </div>
-      <span class="meal-meta">${MEAL_LABELS[c.r.meal]} · ${c.r.time} dk · ${c.matched}/${c.total} malzeme dolapta</span>
+      <span class="meal-meta">${tMealLabel(c.r.meal)} · ${c.r.time} ${t('dk')} · ${c.matched}/${c.total} ${t('malzeme dolapta')}</span>
       <div class="missing-box">
-        <span class="missing-title">${c.missing.length === 0 ? 'Her şey dolapta' : 'Eksik:'}</span>
-        ${c.missing.length ? `<span class="missing-list">${c.missing.map(([n]) => n).join(', ')}</span><span class="missing-cost">~${fmtEur(missingCost)}</span>` : ''}
+        <span class="missing-title">${c.missing.length === 0 ? t('Her şey dolapta') : t('Eksik:')}</span>
+        ${c.missing.length ? `<span class="missing-list">${c.missing.map(([n]) => tIng(n)).join(', ')}</span><span class="missing-cost">~${fmtEur(missingCost)}</span>` : ''}
       </div>
-      <button type="button" class="btn btn-outline btn-sm" data-testid="button-fridge-recipe-${i}">Tarifi gör</button>`;
+      <button type="button" class="btn btn-outline btn-sm" data-testid="button-fridge-recipe-${i}">${t('Tarifi gör')}</button>`;
     card.querySelector('button').addEventListener('click', () => openModal(c.r, { scale: 1 }));
     grid.appendChild(card);
   });
@@ -913,12 +1086,12 @@ function renderSpecials() {
     card.setAttribute('data-testid', `card-special-${i}`);
     card.innerHTML = `
       <div class="fridge-card-head">
-        <span class="meal-name">${r.name}</span>
+        <span class="meal-name">${tName(r)}</span>
         <span class="surprise-badge">${cuisineName(r.cuisine)}</span>
       </div>
-      <span class="meal-meta">${r.time} dk · ${r.tags.filter((t) => t !== 'ozel').map(tagPill).join(' ')}</span>
-      <span class="meal-meta">Tahmini malzeme maliyeti: ${fmtEur(recipeCost(r))}</span>
-      <button type="button" class="btn btn-outline btn-sm" data-testid="button-special-${i}">Tarifi gör</button>`;
+      <span class="meal-meta">${r.time} ${t('dk')} · ${r.tags.filter((t) => t !== 'ozel').map(tagPill).join(' ')}</span>
+      <span class="meal-meta">${t('Tahmini malzeme maliyeti:')} ${fmtEur(recipeCost(r))}</span>
+      <button type="button" class="btn btn-outline btn-sm" data-testid="button-special-${i}">${t('Tarifi gör')}</button>`;
     card.querySelector('button').addEventListener('click', () => openModal(r, { scale: 1 }));
     grid.appendChild(card);
   });
@@ -930,7 +1103,7 @@ $('#btn-add-member').addEventListener('click', () => {
   renderMembers();
 });
 $('#btn-generate').addEventListener('click', generateAndShow);
-$('#btn-regen').addEventListener('click', () => { generateAndShow(); toast('Yeni bir plan oluşturuldu.'); });
+$('#btn-regen').addEventListener('click', () => { generateAndShow(); toast(t('Yeni bir plan oluşturuldu.')); });
 $('#btn-edit-setup').addEventListener('click', () => showView('home'));
 $('#brand-home').addEventListener('click', () => showView('home'));
 document.querySelectorAll('#header-nav .nav-tab').forEach((t) => {
@@ -939,6 +1112,7 @@ document.querySelectorAll('#header-nav .nav-tab').forEach((t) => {
     showView(t.dataset.view);
   });
 });
+
 document.querySelectorAll('.plan-tabs .nav-tab').forEach((t) => {
   t.addEventListener('click', () => switchTab(t.dataset.resultsTab));
 });
@@ -950,7 +1124,10 @@ $('#modal').addEventListener('click', (e) => { if (e.target === $('#modal')) clo
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
 /* ---------- Başlat ---------- */
+applyStaticI18n();
+renderLangSwitch();
 renderCuisines();
+renderDiet();
 renderMembers();
 renderAllChips();
 renderFridgeDatalist();
