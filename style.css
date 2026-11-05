@@ -710,6 +710,12 @@
 }
 
 /* Modal */
+.modal-backdrop[hidden],
+.header-nav[hidden],
+.results-tab[hidden],
+.wizard-step[hidden] {
+  display: none;
+}
 .modal-backdrop {
   position: fixed;
   inset: 0;

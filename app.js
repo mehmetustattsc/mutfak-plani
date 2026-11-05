@@ -669,7 +669,6 @@ function renderResults() {
   const shopPanel = $('#panel-shopping');
   shopPanel.innerHTML = '';
   const storeOrder = Object.keys(STORES).filter((st) => s.byStore[st]);
-  const storeIcons = { Aldi: 'A', Lidl: 'L', Netto: 'N', Penny: 'P', Rewe: 'R', Edeka: 'E' };
   for (const store of storeOrder) {
     const storeItems = s.byStore[store];
     const sec = el('section', 'store-section');
@@ -679,7 +678,7 @@ function renderResults() {
     head.setAttribute('aria-expanded', 'true');
     head.setAttribute('data-testid', `button-store-head-${store}`);
     head.innerHTML = `
-      <span class="store-name"><span class="tag">${storeIcons[store] || store[0]}</span>${store}</span>
+      <span class="store-name">${store}</span>
       <span class="store-sub">${storeItems.length} ürün</span>
       <span class="store-total">${fmtEur(s.storeTotals[store])}</span>`;
     const body = el('div', 'store-body');
