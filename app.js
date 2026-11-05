@@ -529,7 +529,7 @@ function renderMembers() {
 function updatePortionNote() {
   const p = totalPortions(state.members);
   $('#portion-note').textContent =
-    `Hane toplamı: ${p.toFixed(1).replace('.', ',')} porsiyon (1 yetişkin = 1 porsiyon). Malzeme miktarları buna göre otomatik ölçeklenir.`;
+    `Hane toplamı: ${p.toFixed(1).replace('.', ',')} porsiyon · yetişkin kadın = 1,0 · yetişkin erkek = 1,15 · çocuklar yaşa göre daha az. Malzeme miktarları buna göre otomatik ölçeklenir.`;
 }
 
 /* ---------- Chip grupları ---------- */
