@@ -272,7 +272,7 @@ const RECIPES = [
     ['Lahmacunları fırında ya da tavada ısıtın.', 'Marul, domates ve maydanozu doğrayın.', 'İçine sebzeleri sararak limonla servis edin.', 'Yoğurdu çırpıp ayran yapın.']),
 
   R('tr', 'lunch', 'cacik', 'Cacık', 10, ['lunch', 'vejetaryen', 'pratik', 'sebze'],
-    [['yoğurt', 500], ['salatalık', 200], ['sarımsak', 5], ['nane', 5], ['zeytinyağı', 20]],
+    [['yoğurt', 500], ['salatalık', 200], ['sarımsak', 5], ['nane', 2], ['zeytinyağı', 20]],
     ['Salatalığı rendeleyin ya da küçük küp doğrayın.', 'Sarımsağı ezin ve yoğurtla karıştırın.', 'Salatalığı ve ince kıyılmış naneyi ekleyin.', 'İsterseniz birkaç kaşık su ile kıvamını açın.', 'Üzerine zeytinyağı ve kuru nane serperek soğuk servis edin.']),
 
   R('tr', 'lunch', 'sebze-corba-oglen', 'Sebze Çorbası + Ekmek', 30, ['lunch', 'corba', 'vegan'],
@@ -413,7 +413,7 @@ const RECIPES = [
 
   /* ================= FRANSIZ — KAHVALTI ================= */
   R('fr', 'breakfast', 'tartines', 'Tartines & Portakal Suyu', 10, ['kahvalti', 'pratik'],
-    [['ekmek', 1, true], ['tereyağı', 40], ['marmelat', 80], ['portakal', 2]],
+    [['ekmek', 1, true], ['tereyağı', 40], ['marmelat', 80], ['portakal', 400]],
     ['Ekmeği dilimleyip kızartın.', 'Tereyağı ve marmelatı sürün.', 'Portakalları sıkp taze suyu çıkarın.', 'Kahve ya da çayla servis edin.']),
 
   R('fr', 'breakfast', 'oeufs', 'Haşlanmış Yumurta & Baget', 15, ['kahvalti', 'pratik'],
@@ -588,38 +588,38 @@ const RECIPES = [
     ['Baklavayı dilimleyin.', 'İsterseniz hafif ısıtın.', 'Cevizle süsleyin.', 'Yanına dondurma koyarak servis edin.']),
 
   R('gr', 'dessert', 'portakal-kek', 'Portakallı Kek', 55, ['dessert'],
-    [['un', 200], ['şeker', 180], ['yumurta', 3], ['portakal', 2], ['sıvı yağ', 100]],
+    [['un', 200], ['şeker', 180], ['yumurta', 3], ['portakal', 300], ['sıvı yağ', 100]],
     ['Yumurta ve şekeri çırpın.', 'Portakal suyu ve rendesini ekleyin.', 'Unu ekleyip karıştırın.', 'Yağlanmış kalıpta 175 °C fırında 40 dakika pişirin.', 'Soğuyunca dilimleyin.']),
 
   /* ================= BESLENME ÇANTASI (okul/iş) — kişi başı 1 porsiyon ================= */
   /* Türk mutfağı */
   R('tr', 'lunchbox', 'lb-poğaca', 'Peynirli Poğaça + Ayran', 35, ['pratik'],
-    [['un', 150], ['süt', 30], ['tereyağı', 20], ['yumurta', 1], ['beyaz peynir', 50], ['maya', 5]],
+    [['un', 150], ['süt', 30], ['tereyağı', 20], ['yumurta', 1], ['beyaz peynir', 50], ['maya', 0.25]],
     ['Hamur malzemelerini karıştırıp 30 dk mayalandırın (akşamdan da yapılabilir).', 'Peynirli içle poğaçaları hazırlayıp 180 °C fırında 25 dk pişirin.', 'Yanına ayran ve meyve ekleyin.']),
   R('tr', 'lunchbox', 'lb-sandvic', 'Yumurtalı Sandviç + Domates', 15, ['pratik'],
-    [['ekmek', 1], ['yumurta', 1], ['tereyağı', 10], ['domates', 1]],
+    [['ekmek', 1], ['yumurta', 1], ['tereyağı', 10], ['domates', 100]],
     ['Yumurtayı katı pişirin, dilimleyin.', 'Ekmeğin arasına tereyağı sürüp yumurta ve domates dilimlerini yerleştirin.', 'Alüminyum folyo veya kilitli torba ile paketleyin.']),
   R('tr', 'lunchbox', 'lb-mercimek-termos', 'Mercimek Çorbası (Termos) + Ekmek', 40, ['corba', 'baklagil', 'vegan'],
     [['kırmızı mercimek', 60], ['soğan', 30], ['havuç', 50], ['tereyağı', 10], ['ekmek', 1]],
     ['Soğan ve havucu tereyağında kavurun, mercimeği ekleyin.', '1,5 su bardağı suyla 20 dk pişirip blendırlayın.', 'Termosa koyun, yanına ekmek alın.']),
   R('tr', 'lunchbox', 'lb-tost', 'Kaşarlı Tost + Elma', 15, ['pratik'],
-    [['ekmek', 2], ['kaşar peyniri', 60], ['tereyağı', 15], ['elma', 1]],
+    [['ekmek', 2], ['kaşar peyniri', 60], ['tereyağı', 15], ['elma', 150]],
     ['Ekmeğin arasına kaşar koyup tost makinesinde kızartın.', 'Soğuyunca paketleyin, yanına elma ekleyin.']),
 
   /* İtalyan */
   R('it', 'lunchbox', 'lb-panino', 'Panino con Mozzarella', 15, ['pratik'],
-    [['ekmek', 1], ['mozzarella', 1], ['domates', 1], ['zeytinyağı', 10], ['maydanoz', 1]],
+    [['ekmek', 1], ['mozzarella', 60], ['domates', 80], ['zeytinyağı', 10], ['maydanoz', 1]],
     ['Ekmeği yarıya kesin, içine mozzarella ve domates dilimlerini koyun.', 'Zeytinyağı ve maydanoz serpin.']),
   R('it', 'lunchbox', 'lb-frittata', 'Frittata Dilimi', 30, ['pratik', 'vejetaryen'],
     [['yumurta', 2], ['patates', 100], ['soğan', 30], ['sıvı yağ', 10], ['ekmek', 1]],
     ['Patatesi ince dilimleyip yağda yumuşayana kadar kızartın.', 'Çırpılmış yumurtayı döküp kapağın altında pişirin.', 'Soğuyunca dilimleyip ekmekle paketleyin.']),
   R('it', 'lunchbox', 'lb-pasta-fredda', 'Makarna Salatası (Pasta Fredda)', 25, ['pratik', 'makarna'],
-    [['makarna', 100], ['ton balığı konserve', 1], ['domates', 1], ['zeytinyağı', 15]],
+    [['makarna', 100], ['ton balığı konserve', 1], ['domates', 80], ['zeytinyağı', 15]],
     ['Makarnayı haşlayıp soğutun.', 'Ton balığı, doğranmış domates ve zeytinyağı ile karıştırın.', 'Kapalı kapta buzdolabında taşıyın.']),
 
   /* Fransız */
   R('fr', 'lunchbox', 'lb-croissant', 'Croissant + Marmelat + Portakal', 10, ['pratik', 'kahvalti'],
-    [['croissant', 1], ['marmelat', 50], ['portakal', 1]],
+    [['croissant', 1], ['marmelat', 50], ['portakal', 150]],
     ['Croissantı isterseniz sabah kısaca ısıtın.', 'Marmelat ve soyulmuş portakal dilimleriyle paketleyin.']),
   R('fr', 'lunchbox', 'lb-baguette', 'Jambonlu Baget', 10, ['pratik'],
     [['ekmek', 1], ['schinken (jambon)', 50], ['tereyağı', 15], ['hardal', 1]],
@@ -630,10 +630,10 @@ const RECIPES = [
 
   /* Alman */
   R('de', 'lunchbox', 'lb-butterbrot', 'Butterbrot mit Bratwurst + Elma', 10, ['pratik'],
-    [['brötchen', 1], ['tereyağı', 20], ['bratwurst', 1], ['elma', 1]],
+    [['brötchen', 1], ['tereyağı', 20], ['bratwurst', 100], ['elma', 150]],
     ['Bratwurstu önceden pişirip soğutun.', 'Brötchenin arasına tereyağı sürüp bratwurstu yerleştirin.', 'Yanına elma ekleyin.']),
   R('de', 'lunchbox', 'lb-brotzeit', 'Brotzeit (Käsebrötchen + Sebze)', 10, ['pratik', 'vejetaryen'],
-    [['brötchen', 2], ['kaşar peyniri', 60], ['salatalık', 50], ['domates', 1]],
+    [['brötchen', 2], ['kaşar peyniri', 60], ['salatalık', 50], ['domates', 80]],
     ['Brötchenleri yarıya kesip peyniri koyun.', 'Salatalık ve domates dilimlerini ayrı kutuda taşıyın.']),
   R('de', 'lunchbox', 'lb-kartoffelsalat', 'Kartoffelsalat', 40, ['pratik'],
     [['patates', 200], ['soğan', 30], ['sıvı yağ', 15], ['hardal', 1], ['yumurta', 1]],
@@ -644,7 +644,7 @@ const RECIPES = [
     [['ekmek', 1], ['yoğurt', 100], ['salatalık', 100], ['sarımsak', 5], ['zeytinyağı', 10]],
     ['Yoğurt, rendelenmiş salatalık, sarımsak ve zeytinyağıyla tzatziki yapın (akşamdan).', 'Pitayı ısıtıp içine koyun.']),
   R('gr', 'lunchbox', 'lb-horiatiki', 'Halk Salatası (Kutuda)', 15, ['pratik', 'vejetaryen'],
-    [['domates', 1], ['salatalık', 100], ['beyaz peynir', 60], ['zeytin', 30], ['zeytinyağı', 15]],
+    [['domates', 100], ['salatalık', 100], ['beyaz peynir', 60], ['zeytin', 30], ['zeytinyağı', 15]],
     ['Domates, salatalık ve peyniri küp doğrayın.', 'Zeytin ve zeytinyağıyla karıştırıp sızdırmaz kutuya koyun.']),
   R('gr', 'lunchbox', 'lb-spanakopita', 'Spanakopita Dilimi', 50, ['pratik', 'firin'],
     [['un', 120], ['tereyağı', 40], ['ıspanak', 100], ['beyaz peynir', 60], ['yumurta', 1]],
@@ -652,7 +652,7 @@ const RECIPES = [
 
   /* Evrensel (her mutfakta) */
   R('mix', 'lunchbox', 'lb-overnight-oats', 'Gece Yulafı (Overnight Oats)', 10, ['pratik', 'vegan'],
-    [['yulaf', 60], ['süt', 200], ['elma', 1], ['tarçın', 1]],
+    [['yulaf', 60], ['süt', 200], ['elma', 150], ['tarçın', 1]],
     ['Akşam yulaf, süt ve tarçını kavanoza koyup buzdolabına koyun.', 'Sabah üzerine doğranmış elma ekleyin.']),
   R('mix', 'lunchbox', 'lb-yumurta-brötchen', 'Haşlanmış Yumurta + Brötchen + Muz', 10, ['pratik'],
     [['yumurta', 2], ['brötchen', 1], ['muz', 1]],
@@ -704,16 +704,16 @@ const RECIPES = [
 
   /* ================= ÖZEL TARİFLER (plana girmez, meraklısına) ================= */
   R('tr', 'special', 'sp-ekmek', 'Evde Ekmek', 120, ['ozel', 'vegan'],
-    [['un', 500], ['maya', 10], ['tuz', 10], ['şeker', 5], ['zeytinyağı', 30]],
+    [['un', 500], ['maya', 1], ['tuz', 2], ['şeker', 5], ['zeytinyağı', 30]],
     ['Unu kaseye alın, ortasını havuz gibi açın.', 'Ilık suda maya ve şekeri eritin, una ekleyin.', 'Tuz ve zeytinyağını ekleyip 8-10 dk yoğurun.', 'Üzeri kapalı 1 saat mayalandırın.', 'Havayı alıp şekil verin, 20 dk daha bekletin.', '220 °C fırında (kase içinde suyla) 30-35 dk pişirin.']),
   R('jp', 'special', 'sp-sushi', 'Evde Suşi (Maki)', 90, ['ozel'],
     [['pirinç', 400], ['nori', 5], ['somon fileto', 300], ['avokado', 2], ['soya sosu', 50]],
     ['Pirinci haşlayıp soğutun (sushi pirinci kıvamında).', 'Nori yaprağını bambu matına yayın, üzerine ince pirinç serin.', 'Ortaya somon ve avokado şeritleri koyun.', 'Sıkıca sarıp 8 dilim halinde kesin.', 'Soya sosu ile servis edin.']),
   R('it', 'special', 'sp-taze-makarna', 'Taze El Yapımı Makarna', 90, ['ozel'],
-    [['un', 400], ['yumurta', 4], ['tuz', 5], ['tereyağı', 50], ['parmesan', 50]],
+    [['un', 400], ['yumurta', 4], ['tuz', 1], ['tereyağı', 50], ['parmesan', 50]],
     ['Unu tezgaha yayıp ortasını açın, yumurta ve tuzu kırın.', 'Unu yavaşça içe katlayıp 10 dk yoğurun.', '30 dk dinlendirin.', 'İnce açıp şeritler halinde kesin.', 'Tuzlu suda 3 dk haşlayın, tereyağı ve parmesanla servis edin.']),
   R('tr', 'special', 'sp-lahmacun', 'Hamurdan Lahmacun', 120, ['ozel', 'etli'],
-    [['un', 400], ['maya', 8], ['dana kıyma', 300], ['soğan', 100], ['domates salçası', 20], ['biber salçası', 10], ['pul biber', 1], ['ekmek', 1, true]],
+    [['un', 400], ['maya', 1], ['dana kıyma', 300], ['soğan', 100], ['domates salçası', 20], ['biber salçası', 10], ['pul biber', 1], ['ekmek', 1, true]],
     ['Un, maya, tuz ve suyla yumuşak hamur yapın, 1 saat mayalandırın.', 'Kıymayı soğan ve salçalarla robotta ince kıyın.', 'Hamuru ince açıp harcı yayın.', '250 °C fırında 6-8 dk pişirin.', 'Limon ve maydanozle sararak servis edin.']),
   R('tr', 'special', 'sp-hummus', 'Evde Hummus', 20, ['ozel', 'vegan'],
     [['nohut', 400], ['tahin', 80], ['limon', 1], ['sarımsak', 10], ['zeytinyağı', 40]],
@@ -721,6 +721,14 @@ const RECIPES = [
   R('mix', 'special', 'sp-granola', 'Evde Granola', 45, ['ozel', 'vegan'],
     [['yulaf', 300], ['bal', 100], ['ceviz', 100], ['tarçın', 1], ['zeytinyağı', 50]],
     ['Yulaf, ceviz ve tarçını karıştırın.', 'Bal ve yağı ekleyip harmanlayın.', 'Fırın tepsisine yayıp 160 °C fırında 30 dk ara ara karıştırarak kızartın.', 'Soğuyunca kavanoza koyun; süt veya yoğurtla yiyin.']),
+
+  /* ================= VEGAN EKLER (vegan seçimde boşluk kalmasın) ================= */
+  R('tr', 'breakfast', 'vegan-kahvalti', 'Zeytinyağlı Sebze Kahvaltısı', 10, ['kahvalti', 'pratik'],
+    [['ekmek', 1], ['zeytin', 100], ['domates', 250], ['salatalık', 200], ['zeytinyağı', 20], ['kekik', 1]],
+    ['Domates ve salatalığı dilimleyin.', 'Zeytinleri tabağa alın.', 'Ekmeği dilimleyip hafifçe kızartın.', 'Zeytinyağı ve kekik gezdirerek çayla servis edin.']),
+  R('mix', 'lunchbox', 'lb-humus-sandvic', 'Humuslu Sebzeli Sandviç', 15, ['pratik', 'baklagil'],
+    [['ekmek', 1], ['nohut', 60], ['tahin', 15], ['limon', 0.25], ['salatalık', 60], ['domates', 80]],
+    ['Haşlanmış nohudu tahin ve limonla ezerek humus yapın (akşamdan da olur).', 'Ekmeğe humusu sürün.', 'Salatalık ve domates dilimleriyle doldurup paketleyin.']),
 ];
 
 /* ---------- Alerjen hesaplama ---------- */
@@ -745,5 +753,31 @@ function allergensOf(recipe) {
   return found;
 }
 
-/* Alerjenleri hesapla */
-for (const r of RECIPES) r.allergens = allergensOf(r);
+/* ---------- Beslenme şekli (malzemeden otomatik) ----------
+   Etiketler elle değil, malzeme listesinden hesaplanır; böylece
+   tereyağlı bir çorba yanlışlıkla "vegan" görünmez. */
+const MEAT_FISH_ING = new Set([
+  'dana kıyma', 'kuşbaşı dana et', 'tavuk göğsü', 'tavuk but',
+  'schinken (jambon)', 'bratwurst', 'speck (domuz pastırması)',
+  'somon fileto', 'ton balığı konserve', 'lahmacun',
+]);
+const ANIMAL_ING = new Set([
+  'süt', 'yoğurt', 'lor', 'beyaz peynir', 'kaşar peyniri', 'yumurta', 'tereyağı',
+  'bal', 'mascarpone', 'süt kreması', 'parmesan', 'mozzarella',
+  'baklava (hazır)', 'bisküvi', 'croissant',
+]);
+function dietOf(recipe) {
+  const names = recipe.ingredients.map((i) => i[0]);
+  if (names.some((n) => MEAT_FISH_ING.has(n))) return 'normal';
+  if (names.some((n) => ANIMAL_ING.has(n))) return 'veg';
+  return 'vegan';
+}
+
+/* Alerjenleri ve beslenme etiketlerini hesapla */
+for (const r of RECIPES) {
+  r.allergens = allergensOf(r);
+  r.diet = dietOf(r);
+  r.tags = r.tags.filter((t) => t !== 'vegan' && t !== 'vejetaryen');
+  if (r.diet === 'vegan') r.tags.push('vegan');
+  else if (r.diet === 'veg') r.tags.push('vejetaryen');
+}

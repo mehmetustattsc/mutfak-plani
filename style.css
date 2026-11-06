@@ -1329,3 +1329,59 @@
 @media (max-width: 640px) {
   .fridge-input-row { flex-direction: column; align-items: stretch; }
 }
+
+/* =========================================================
+   v6: Karanlık mod
+   ========================================================= */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: #1b1712;
+    --color-surface: #24201a;
+    --color-surface-2: #2c2720;
+    --color-surface-offset: #353027;
+    --color-divider: #3d362c;
+    --color-border: #4d4538;
+    --color-text: #f1e9da;
+    --color-text-muted: #b8ad98;
+    --color-text-faint: #8a8070;
+    --color-accent: #e0763a;
+    --color-accent-hover: #f08a4e;
+    --color-accent-soft: #43291a;
+    --color-olive: #a9bb82;
+    --color-olive-soft: #2c3322;
+    --color-blue: #8fb0d8;
+    --color-blue-soft: #1f2a38;
+    --color-error: #e06a6a;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+    --badge-real-bg: #213421; --badge-real-fg: #9fd39f;
+    --badge-surprise-bg: #2f2840; --badge-surprise-fg: #c3b5e8;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --color-bg: #1b1712;
+  --color-surface: #24201a;
+  --color-surface-2: #2c2720;
+  --color-surface-offset: #353027;
+  --color-divider: #3d362c;
+  --color-border: #4d4538;
+  --color-text: #f1e9da;
+  --color-text-muted: #b8ad98;
+  --color-text-faint: #8a8070;
+  --color-accent: #e0763a;
+  --color-accent-hover: #f08a4e;
+  --color-accent-soft: #43291a;
+  --color-olive: #a9bb82;
+  --color-olive-soft: #2c3322;
+  --color-blue: #8fb0d8;
+  --color-blue-soft: #1f2a38;
+  --color-error: #e06a6a;
+  --badge-real-bg: #213421; --badge-real-fg: #9fd39f;
+  --badge-surprise-bg: #2f2840; --badge-surprise-fg: #c3b5e8;
+  color-scheme: dark;
+}
+.price-badge.is-real { background: var(--badge-real-bg, #e4efe4); color: var(--badge-real-fg, #2c5e2c); }
+.surprise-badge { background: var(--badge-surprise-bg, #ece7f5); color: var(--badge-surprise-fg, #5a4a82); }
+.modal-backdrop { background: rgba(10, 8, 5, 0.6); }

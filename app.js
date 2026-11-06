@@ -269,6 +269,7 @@ function buildPlan(st) {
   }
 
   const mid = (st.budgetMin + st.budgetMax) / 2;
+  const rulesOk = (pick) => satisfiesRules(pick, activeRules);
   let best = null;
   let relaxedBest = null;
 
@@ -329,6 +330,21 @@ function buildPlan(st) {
     surprise: surpriseDays.find((s) => s.day === i) || null,
   }));
 
+  return assemblePlan(st, plan, { rulesSatisfied: rulesOk(chosen.pick), relaxed: !best, pools });
+}
+
+/* Plan günlerinden özet alanları hesaplar (yeni plan ve kayıttan geri yükleme ortak) */
+function assemblePlan(st, plan, extra) {
+  const P = Math.max(totalPortions(st.members), 1);
+  const scale = P / 4;
+  const homeP = st.members.filter((m) => (m.morning || 'ev') === 'ev')
+    .reduce((s, m) => s + portionFactor(m.age, m.gender), 0);
+  const homeScale = homeP / 4;
+  const awayCount = st.members.filter((m) => (m.morning || 'ev') !== 'ev').length;
+  const dinners = plan.map((d) => d.dinner);
+  const mustFree = st.mustFree.trim().toLowerCase();
+  const mustFreeN = mustFree ? dinners.filter((r) => r.ingredients.some(([n]) => n.toLowerCase().includes(mustFree))).length : 0;
+
   /* Toplamı final plandan taze hesapla */
   let total = 0;
   for (const d of plan) {
@@ -340,14 +356,93 @@ function buildPlan(st) {
   return {
     plan, scale, homeScale, awayCount, portions: P,
     total, budgetMin: st.budgetMin, budgetMax: st.budgetMax,
-    rulesSatisfied: chosen.ok, relaxed: !best,
-    mustFreeApplied: !!mustFree && mustFreeCount(chosen.pick) >= 2,
+    rulesSatisfied: extra.rulesSatisfied, relaxed: !!extra.relaxed,
+    mustFreeApplied: !!mustFree && mustFreeN >= 2,
     mustFreeName: st.mustFree.trim(),
-    proteinCount: chosen.pick.filter((r) => r.tags.some((t) => PROTEIN_TAGS.includes(t))).length,
-    lightCount: chosen.pick.filter((r) => r.tags.some((t) => LIGHT_TAGS.includes(t))).length,
-    pools,
+    proteinCount: dinners.filter((r) => r.tags.some((t) => PROTEIN_TAGS.includes(t))).length,
+    lightCount: dinners.filter((r) => r.tags.some((t) => LIGHT_TAGS.includes(t))).length,
+    pools: extra.pools,
   };
 }
+
+/* ---------- Bütçe önerisi (haneye göre) ---------- */
+const round5 = (v) => Math.max(10, Math.round(v / 5) * 5);
+function suggestedBudget(members) {
+  const P = Math.max(totalPortions(members), 0.5);
+  return { min: round5(P * 13), max: round5(P * 26) };
+}
+
+/* ---------- Kalıcı kayıt (plan + işaretler) ---------- */
+const SAVE_KEY = 'mp-state-v1';
+const RECIPE_BY_ID = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
+function saveState() {
+  try {
+    const ls = langStore();
+    if (!ls) return;
+    const pr = state.planResult;
+    const ids = (obj) => Object.fromEntries(Object.entries(obj).map(([k, r]) => [k, r.id]));
+    const data = {
+      cuisines: [...state.cuisines], cuisineWeights: state.cuisineWeights, diet: state.diet,
+      members: state.members, budgetMin: state.budgetMin, budgetMax: state.budgetMax,
+      budgetTouched: state.budgetTouched,
+      allergens: [...state.allergens], dislikes: [...state.dislikes], excludeFree: state.excludeFree,
+      mustRules: [...state.mustRules], mustFree: state.mustFree,
+      plan: pr ? pr.plan.map((d) => ({
+        day: d.day, b: d.breakfast && d.breakfast.id, lb: d.lunchbox && d.lunchbox.id,
+        d: d.dinner.id, s: d.surprise,
+      })) : null,
+      guests: state.guests, guestRecipes: ids(state.guestRecipes),
+      lunches: ids(state.extras.lunches), desserts: ids(state.extras.desserts),
+      checked: [...state.checked],
+    };
+    ls.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch (e) { /* kayıt yapılamazsa sessizce yoksay */ }
+}
+function loadState() {
+  try {
+    const ls = langStore();
+    const raw = ls && ls.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const d = JSON.parse(raw);
+    const byId = (id) => (id ? RECIPE_BY_ID[id] || null : null);
+    const recipes = (obj) => {
+      const out = {};
+      for (const [k, id] of Object.entries(obj || {})) if (RECIPE_BY_ID[id]) out[k] = RECIPE_BY_ID[id];
+      return out;
+    };
+    state.cuisines = new Set(d.cuisines || ['tr']);
+    state.cuisineWeights = d.cuisineWeights || {};
+    state.diet = Object.assign({ style: 'normal', halal: false, athlete: false, light: false }, d.diet);
+    if (Array.isArray(d.members) && d.members.length) state.members = d.members;
+    state.budgetMin = d.budgetMin || state.budgetMin;
+    state.budgetMax = d.budgetMax || state.budgetMax;
+    state.budgetTouched = !!d.budgetTouched;
+    state.allergens = new Set(d.allergens || []);
+    state.dislikes = new Set(d.dislikes || []);
+    state.excludeFree = d.excludeFree || [];
+    state.mustRules = new Set(d.mustRules || []);
+    state.mustFree = d.mustFree || '';
+    if (Array.isArray(d.plan) && d.plan.length === 7) {
+      const plan = d.plan.map((x) => ({
+        day: x.day, breakfast: byId(x.b), lunchbox: byId(x.lb), dinner: byId(x.d), surprise: x.s || null,
+      }));
+      if (plan.every((x) => x.dinner)) {
+        state.guests = d.guests || {};
+        state.guestRecipes = recipes(d.guestRecipes);
+        state.extras = { lunches: recipes(d.lunches), desserts: recipes(d.desserts) };
+        state.checked = new Set(d.checked || []);
+        const activeRules = MUST_RULES.filter((r) => state.mustRules.has(r.id));
+        state.planResult = assemblePlan(state, plan, {
+          rulesSatisfied: satisfiesRules(plan.map((x) => x.dinner), activeRules),
+          relaxed: false, pools: poolsFor(state),
+        });
+      }
+    }
+    return true;
+  } catch (e) { return false; }
+}
+
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 /* ---------- Alışveriş listesi ---------- */
 function roundQty(qty, unit) {
@@ -454,6 +549,7 @@ const state = {
   ],
   budgetMin: 45,
   budgetMax: 90,
+  budgetTouched: false, /* kullanıcı bütçeyi elle değiştirdiyse otomatik öneri yapılmaz */
   allergens: new Set(),
   dislikes: new Set(),
   excludeFree: [],
@@ -653,7 +749,18 @@ function renderMembers() {
   updatePortionNote();
 }
 
+function applySuggestedBudget() {
+  if (state.budgetTouched) return;
+  const s = suggestedBudget(state.members);
+  state.budgetMin = s.min;
+  state.budgetMax = s.max;
+  const mn = $('#budget-min'), mx = $('#budget-max');
+  if (mn) mn.value = s.min;
+  if (mx) mx.value = s.max;
+}
+
 function updatePortionNote() {
+  applySuggestedBudget();
   const p = totalPortions(state.members);
   $('#portion-note').textContent =
     `${t('Hane toplamı')}: ${fmtPortion(p)} ${t('porsiyon')} · ${t('yetişkin kadın = 1,0')} · ${t('yetişkin erkek = 1,15')} · ${t('çocuklar yaşa göre daha az')}. ${t('Malzeme miktarları buna göre otomatik ölçeklenir.')}`;
@@ -711,6 +818,7 @@ function generateAndShow() {
   if (result.error) { toast(t(result.error)); return; }
   state.planResult = result;
   renderResults();
+  saveState();
   $('[data-view="plan"]').hidden = false;
   showView('plan');
   switchTab('plan');
@@ -781,7 +889,12 @@ function renderResults() {
   planPanel.appendChild(barWrap);
 
   const notes = [];
-  if (r.mustFreeApplied) notes.push(tFmt('"{x}" içeren en az 2 yemek plana alındı.', { x: r.mustFreeName }));
+  if (r.total < r.budgetMin) {
+    notes.push(tFmt('Plan bütçe alt sınırınızın {v} altında kaldı — seçimlerinizle daha pahalı bir hafta çıkmadı, bu size tasarruf demek.', { v: fmtEur(r.budgetMin - r.total) }));
+  } else if (r.total > r.budgetMax) {
+    notes.push(tFmt('Plan bütçe üst sınırınızı {v} aşıyor. Daha uygun mutfaklar ekleyin, elemeleri azaltın veya bütçeyi yükseltin.', { v: fmtEur(r.total - r.budgetMax) }));
+  }
+  if (r.mustFreeApplied) notes.push(tFmt('"{x}" içeren en az 2 yemek plana alındı.', { x: escapeHtml(r.mustFreeName) }));
   if (!r.rulesSatisfied) notes.push(t('Bazı şartlar eleme kurallarıyla çakıştığı için uygulanamadı.'));
   if (state.diet.style === 'vegan') notes.push(t('Vegan seçim: tüm tarifler bitkisel.'));
   if (state.diet.style === 'veg') notes.push(t('Vejetaryen seçim: et ve balık içeren tarifler çıkarıldı.'));
@@ -912,6 +1025,7 @@ function renderResults() {
       chk.addEventListener('change', () => {
         chk.checked ? state.checked.add(it.name) : state.checked.delete(it.name);
         row.classList.toggle('is-checked', chk.checked);
+        saveState();
       });
       body.appendChild(row);
     });
@@ -968,6 +1082,7 @@ function toggleExtra(kind, dayName) {
   if (state.extras[kind][dayName]) {
     delete state.extras[kind][dayName];
     renderResults();
+    saveState();
     return;
   }
   const pool = kind === 'lunches' ? pr.pools.lunches : pr.pools.desserts;
@@ -980,6 +1095,7 @@ function toggleExtra(kind, dayName) {
   if (!candidates.length) candidates = pool;
   state.extras[kind][dayName] = weightedPick(candidates, (x) => cuisineWeight(x.cuisine, state));
   renderResults();
+  saveState();
 }
 
 /* ---------- Misafir (gün bazlı) ---------- */
@@ -998,12 +1114,14 @@ function toggleGuest(dayName) {
     toast(`${tDay(dayName)}: ${t('Misafir menüsü eklendi. Malzemeler otomatik artırılır.')}`);
   }
   renderResults();
+  saveState();
 }
 function adjustGuest(dayName, delta) {
   const cur = state.guests[dayName] || 0;
   const next = Math.min(12, Math.max(1, cur + delta));
   state.guests[dayName] = next;
   renderResults();
+  saveState();
 }
 
 /* ---------- Sekmeler ---------- */
@@ -1051,9 +1169,11 @@ function closeModal() {
    ========================================================= */
 function renderFridgeDatalist() {
   const dl = $('#fridge-datalist');
+  /* Seçili dilde gösterilir; eşleştirme hem çeviriye hem Türkçe ada bakar */
   dl.innerHTML = Object.keys(ING)
-    .sort((a, b) => a.localeCompare(b, 'tr'))
-    .map((n) => `<option value="${n}">`).join('');
+    .map((n) => tIng(n))
+    .sort((a, b) => a.localeCompare(b, state.lang))
+    .map((n) => `<option value="${escapeHtml(n)}">`).join('');
 }
 
 function renderFridgeChips() {
@@ -1079,9 +1199,11 @@ function addPantryItem() {
   if (!raw) { suggestFromPantry(); return; }
   /* En yakın malzeme adını bul (tam eşleşme veya başlangıç) */
   const names = Object.keys(ING);
-  let match = names.find((n) => n.toLowerCase() === raw)
-    || names.find((n) => n.toLowerCase().startsWith(raw))
-    || names.find((n) => n.toLowerCase().includes(raw));
+  const lc = (s) => s.toLocaleLowerCase(state.lang);
+  const labels = (n) => [lc(n), lc(tIng(n))];
+  let match = names.find((n) => labels(n).some((l) => l === raw))
+    || names.find((n) => labels(n).some((l) => l.startsWith(raw)))
+    || names.find((n) => labels(n).some((l) => l.includes(raw)));
   if (!match) { toast(tFmt('"{x}" malzeme listesinde yok. Listeden seçmeyi deneyin.', { x: raw })); return; }
   state.pantry.add(match);
   input.value = '';
@@ -1228,7 +1350,18 @@ $('#btn-fridge-suggest').addEventListener('click', () => { addPantryItem(); sugg
 $('#modal').addEventListener('click', (e) => { if (e.target === $('#modal')) closeModal(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
+['#budget-min', '#budget-max'].forEach((sel) => {
+  $(sel).addEventListener('input', () => { state.budgetTouched = true; });
+});
+
 /* ---------- Başlat ---------- */
+const restored = loadState();
+if (restored) {
+  $('#budget-min').value = state.budgetMin;
+  $('#budget-max').value = state.budgetMax;
+  $('#exclude-free').value = state.excludeFree.join(', ');
+  $('#must-free').value = state.mustFree;
+}
 applyStaticI18n();
 renderLangSwitch();
 renderCuisines();
@@ -1238,4 +1371,11 @@ renderAllChips();
 renderFridgeDatalist();
 renderFridgeChips();
 renderSpecials();
-showView('home');
+if (state.planResult) {
+  renderResults();
+  $('[data-view="plan"]').hidden = false;
+  showView('plan');
+  switchTab('plan');
+} else {
+  showView('home');
+}

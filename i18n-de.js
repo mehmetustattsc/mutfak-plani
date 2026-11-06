@@ -418,3 +418,14 @@ Object.assign(window.I18N.de.ui, {
 (function (R) {
   R['cacik'] = { name: 'Cacık (Joghurt mit Gurken)', steps: ['Gurke raspeln oder klein würfeln.', 'Knoblauch zerdrücken und mit dem Joghurt verrühren.', 'Gurke und fein geschnittene Minze unterrühren.', 'Nach Bedarf mit ein paar Löffeln Wasser verdünnen.', 'Mit Olivenöl und getrockneter Minze kalt servieren.'] };
 })(window.I18N.de.recipes);
+(function (R) {
+  R['vegan-kahvalti'] = { name: 'Gemüsefrühstück mit Olivenöl', steps: ['Tomaten und Gurken in Scheiben schneiden.', 'Oliven auf den Teller geben.', 'Brot aufschneiden und leicht rösten.', 'Mit Olivenöl und Oregano beträufeln und mit Tee servieren.'] };
+  R['lb-humus-sandvic'] = { name: 'Hummus-Gemüse-Sandwich', steps: ['Gekochte Kichererbsen mit Tahini und Zitrone zu Hummus zerdrücken (auch am Vorabend).', 'Hummus aufs Brot streichen.', 'Mit Gurken- und Tomatenscheiben belegen und einpacken.'] };
+})(window.I18N.de.recipes);
+
+/* ---- v6: bütçe önerisi ---- */
+Object.assign(window.I18N.de.ui, {
+  "Aralık, hanenizin porsiyon sayısına göre otomatik önerilir; kendiniz değiştirirseniz sizin değeriniz kullanılır. Plan, aralığın ortasına yakın bir maliyetle oluşturulur.": "Der Rahmen wird automatisch nach der Portionszahl Ihres Haushalts vorgeschlagen; ändern Sie ihn selbst, gilt Ihr Wert. Der Plan wird mit Kosten nahe der Bereichsmitte erstellt.",
+  "Plan bütçe alt sınırınızın {v} altında kaldı — seçimlerinizle daha pahalı bir hafta çıkmadı, bu size tasarruf demek.": "Der Plan liegt {v} unter Ihrer Budget-Untergrenze — mit Ihrer Auswahl ergab sich keine teurere Woche, Sie sparen also.",
+  "Plan bütçe üst sınırınızı {v} aşıyor. Daha uygun mutfaklar ekleyin, elemeleri azaltın veya bütçeyi yükseltin.": "Der Plan überschreitet Ihre Budget-Obergrenze um {v}. Fügen Sie günstigere Küchen hinzu, lockern Sie Ausschlüsse oder erhöhen Sie das Budget.",
+});

@@ -416,3 +416,14 @@ Object.assign(window.I18N.en.ui, {
 (function (R) {
   R['cacik'] = { name: 'Cacık (Yogurt & Cucumber)', steps: ['Grate or finely dice the cucumber.', 'Crush the garlic and mix into the yogurt.', 'Stir in the cucumber and finely chopped mint.', 'Thin with a few spoons of water if you like.', 'Serve cold with a drizzle of olive oil and dried mint.'] };
 })(window.I18N.en.recipes);
+(function (R) {
+  R['vegan-kahvalti'] = { name: 'Olive Oil Vegetable Breakfast', steps: ['Slice the tomatoes and cucumbers.', 'Plate the olives.', 'Slice and lightly toast the bread.', 'Drizzle with olive oil and oregano and serve with tea.'] };
+  R['lb-humus-sandvic'] = { name: 'Hummus & Veggie Sandwich', steps: ['Mash cooked chickpeas with tahini and lemon into hummus (can be done the night before).', 'Spread the hummus on the bread.', 'Fill with cucumber and tomato slices and pack.'] };
+})(window.I18N.en.recipes);
+
+/* ---- v6: bütçe önerisi ---- */
+Object.assign(window.I18N.en.ui, {
+  "Aralık, hanenizin porsiyon sayısına göre otomatik önerilir; kendiniz değiştirirseniz sizin değeriniz kullanılır. Plan, aralığın ortasına yakın bir maliyetle oluşturulur.": "The range is suggested automatically from your household's portion count; if you change it yourself, your value is used. The plan is created with a cost near the middle of the range.",
+  "Plan bütçe alt sınırınızın {v} altında kaldı — seçimlerinizle daha pahalı bir hafta çıkmadı, bu size tasarruf demek.": "The plan is {v} below your lower budget limit — no pricier week came out of your selection, so you save money.",
+  "Plan bütçe üst sınırınızı {v} aşıyor. Daha uygun mutfaklar ekleyin, elemeleri azaltın veya bütçeyi yükseltin.": "The plan exceeds your upper budget limit by {v}. Add cheaper cuisines, relax exclusions or raise the budget.",
+});
