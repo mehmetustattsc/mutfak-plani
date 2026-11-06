@@ -56,6 +56,9 @@
       </ol>
     </div>
 
+    <!-- ORTAK PLAN (aile senkronizasyonu) -->
+    <section class="share-card" id="share-card" aria-live="polite"></section>
+
     <div class="setup-card">
       <!-- 1: HANE -->
       <section class="setup-section" aria-labelledby="sec-hane">
@@ -149,6 +152,7 @@
   <section id="view-plan" class="view" data-i18n-aria="Oluşturulan plan" aria-label="Oluşturulan plan" hidden>
     <div class="results-head">
       <div class="results-summary" id="results-summary"></div>
+      <button type="button" class="share-pill" id="share-pill" data-testid="button-share-pill" hidden></button>
       <div class="results-actions">
         <button type="button" class="btn btn-outline" id="btn-regen" data-testid="button-regen" data-i18n="Başka bir plan">Başka bir plan</button>
         <button type="button" class="btn btn-ghost" id="btn-edit-setup" data-testid="button-edit-setup" data-i18n="Ayarları değiştir">Ayarları değiştir</button>

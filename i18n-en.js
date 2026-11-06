@@ -427,3 +427,26 @@ Object.assign(window.I18N.en.ui, {
   "Plan bütçe alt sınırınızın {v} altında kaldı — seçimlerinizle daha pahalı bir hafta çıkmadı, bu size tasarruf demek.": "The plan is {v} below your lower budget limit — no pricier week came out of your selection, so you save money.",
   "Plan bütçe üst sınırınızı {v} aşıyor. Daha uygun mutfaklar ekleyin, elemeleri azaltın veya bütçeyi yükseltin.": "The plan exceeds your upper budget limit by {v}. Add cheaper cuisines, relax exclusions or raise the budget.",
 });
+
+/* ---- v7: ortak plan ---- */
+Object.assign(window.I18N.en.ui, {
+  "Ortak Plan": "Shared Plan",
+  "Ortak plan": "Shared plan",
+  "Planı ve alışveriş listesini aile üyeleriyle canlı paylaşın. Biri markette ürün işaretlediğinde diğerinde de görünür.": "Share the plan and shopping list live with your family. When someone ticks off an item at the store, everyone else sees it too.",
+  "Ortak plan başlat": "Start shared plan",
+  "Aile kodunuz var mı?": "Have a family code?",
+  "Katıl": "Join",
+  "Bu cihaz ortak plana bağlı": "This device is connected to the shared plan",
+  "Aile kodu": "Family code",
+  "Linki paylaş": "Share link",
+  "Ayrıl": "Leave",
+  "Bağlantı yok — değişiklikler bağlantı gelince gönderilir": "No connection — changes will be sent once you are back online",
+  "Ortak plan başlatıldı. Linki aile üyelerinize gönderin.": "Shared plan started. Send the link to your family.",
+  "Ortak plana katıldınız.": "You joined the shared plan.",
+  "Geçersiz aile kodu.": "Invalid family code.",
+  "Link kopyalandı.": "Link copied.",
+  "Ortak plandan ayrıldınız. Plan bu cihazda kalır.": "You left the shared plan. The plan stays on this device.",
+  "Ortak plan güncellendi.": "Shared plan updated.",
+  "Bu linkle Mutfak Planı'ndaki ortak planımıza katıl:": "Join our shared plan in Mutfak Planı with this link:",
+  "Bu kodla henüz bir plan yok. Mevcut planınız bu koda kaydedildi.": "There was no plan for this code yet. Your current plan was saved under it.",
+});

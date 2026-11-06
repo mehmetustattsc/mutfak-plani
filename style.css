@@ -1385,3 +1385,33 @@
 .price-badge.is-real { background: var(--badge-real-bg, #e4efe4); color: var(--badge-real-fg, #2c5e2c); }
 .surprise-badge { background: var(--badge-surprise-bg, #ece7f5); color: var(--badge-surprise-fg, #5a4a82); }
 .modal-backdrop { background: rgba(10, 8, 5, 0.6); }
+
+/* =========================================================
+   v7: Ortak Plan kartı
+   ========================================================= */
+.share-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg, 16px);
+  padding: var(--space-5, 20px);
+  margin-bottom: var(--space-5, 20px);
+  box-shadow: var(--shadow-sm);
+}
+.share-card h2 { font-size: 1.15rem; margin: 0 0 6px; }
+.share-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.share-join { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin-top: 14px; }
+.share-join .field { flex: 1 1 180px; margin: 0; }
+.share-join input { text-transform: uppercase; letter-spacing: 0.08em; }
+.share-status { display: flex; align-items: center; gap: 8px; margin: 4px 0; color: var(--color-text-muted); }
+.share-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--color-olive); flex: none; }
+.share-status.is-offline .share-dot { background: var(--color-error); }
+.share-code { margin: 6px 0 0; }
+.share-code strong { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.06em; font-size: 1.05rem; }
+.share-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 8px; padding: 4px 12px; border-radius: 999px;
+  background: var(--color-olive-soft); color: var(--color-text);
+  border: 1px solid var(--color-border); font: inherit; font-size: 0.85rem; cursor: pointer;
+}
+.share-pill.is-offline { background: var(--color-accent-soft); }
+.share-pill[hidden] { display: none; }

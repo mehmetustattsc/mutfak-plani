@@ -429,3 +429,26 @@ Object.assign(window.I18N.de.ui, {
   "Plan bütçe alt sınırınızın {v} altında kaldı — seçimlerinizle daha pahalı bir hafta çıkmadı, bu size tasarruf demek.": "Der Plan liegt {v} unter Ihrer Budget-Untergrenze — mit Ihrer Auswahl ergab sich keine teurere Woche, Sie sparen also.",
   "Plan bütçe üst sınırınızı {v} aşıyor. Daha uygun mutfaklar ekleyin, elemeleri azaltın veya bütçeyi yükseltin.": "Der Plan überschreitet Ihre Budget-Obergrenze um {v}. Fügen Sie günstigere Küchen hinzu, lockern Sie Ausschlüsse oder erhöhen Sie das Budget.",
 });
+
+/* ---- v7: ortak plan ---- */
+Object.assign(window.I18N.de.ui, {
+  "Ortak Plan": "Gemeinsamer Plan",
+  "Ortak plan": "Gemeinsamer Plan",
+  "Planı ve alışveriş listesini aile üyeleriyle canlı paylaşın. Biri markette ürün işaretlediğinde diğerinde de görünür.": "Teilen Sie Plan und Einkaufsliste live mit Ihrer Familie. Hakt jemand im Laden etwas ab, sehen es alle anderen auch.",
+  "Ortak plan başlat": "Gemeinsamen Plan starten",
+  "Aile kodunuz var mı?": "Haben Sie einen Familiencode?",
+  "Katıl": "Beitreten",
+  "Bu cihaz ortak plana bağlı": "Dieses Gerät ist mit dem gemeinsamen Plan verbunden",
+  "Aile kodu": "Familiencode",
+  "Linki paylaş": "Link teilen",
+  "Ayrıl": "Verlassen",
+  "Bağlantı yok — değişiklikler bağlantı gelince gönderilir": "Keine Verbindung — Änderungen werden gesendet, sobald wieder Verbindung besteht",
+  "Ortak plan başlatıldı. Linki aile üyelerinize gönderin.": "Gemeinsamer Plan gestartet. Senden Sie den Link an Ihre Familie.",
+  "Ortak plana katıldınız.": "Sie sind dem gemeinsamen Plan beigetreten.",
+  "Geçersiz aile kodu.": "Ungültiger Familiencode.",
+  "Link kopyalandı.": "Link kopiert.",
+  "Ortak plandan ayrıldınız. Plan bu cihazda kalır.": "Sie haben den gemeinsamen Plan verlassen. Der Plan bleibt auf diesem Gerät.",
+  "Ortak plan güncellendi.": "Gemeinsamer Plan aktualisiert.",
+  "Bu linkle Mutfak Planı'ndaki ortak planımıza katıl:": "Tritt mit diesem Link unserem gemeinsamen Plan in Mutfak Planı bei:",
+  "Bu kodla henüz bir plan yok. Mevcut planınız bu koda kaydedildi.": "Zu diesem Code gab es noch keinen Plan. Ihr aktueller Plan wurde unter diesem Code gespeichert.",
+});

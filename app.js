@@ -375,10 +375,7 @@ function suggestedBudget(members) {
 /* ---------- Kalıcı kayıt (plan + işaretler) ---------- */
 const SAVE_KEY = 'mp-state-v1';
 const RECIPE_BY_ID = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
-function saveState() {
-  try {
-    const ls = langStore();
-    if (!ls) return;
+function serializeState() {
     const pr = state.planResult;
     const ids = (obj) => Object.fromEntries(Object.entries(obj).map(([k, r]) => [k, r.id]));
     const data = {
@@ -395,15 +392,26 @@ function saveState() {
       lunches: ids(state.extras.lunches), desserts: ids(state.extras.desserts),
       checked: [...state.checked],
     };
-    ls.setItem(SAVE_KEY, JSON.stringify(data));
-  } catch (e) { /* kayıt yapılamazsa sessizce yoksay */ }
+    return data;
 }
-function loadState() {
+function saveState(opts = {}) {
+  let data;
+  try { data = serializeState(); } catch (e) { return; }
   try {
     const ls = langStore();
-    const raw = ls && ls.getItem(SAVE_KEY);
-    if (!raw) return false;
-    const d = JSON.parse(raw);
+    if (ls) ls.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch (e) { /* kayıt yapılamazsa sessizce yoksay */ }
+  if (!opts.localOnly && typeof Sync !== 'undefined') Sync.schedulePush();
+}
+function loadState(fromData) {
+  try {
+    let d = fromData;
+    if (!d) {
+      const ls = langStore();
+      const raw = ls && ls.getItem(SAVE_KEY);
+      if (!raw) return false;
+      d = JSON.parse(raw);
+    }
     const byId = (id) => (id ? RECIPE_BY_ID[id] || null : null);
     const recipes = (obj) => {
       const out = {};
@@ -422,6 +430,9 @@ function loadState() {
     state.excludeFree = d.excludeFree || [];
     state.mustRules = new Set(d.mustRules || []);
     state.mustFree = d.mustFree || '';
+    state.planResult = null;
+    state.guests = {}; state.guestRecipes = {}; state.checked = new Set();
+    state.extras = { lunches: {}, desserts: {} };
     if (Array.isArray(d.plan) && d.plan.length === 7) {
       const plan = d.plan.map((x) => ({
         day: x.day, breakfast: byId(x.b), lunchbox: byId(x.lb), dinner: byId(x.d), surprise: x.s || null,
@@ -622,6 +633,7 @@ function setLang(lang) {
   renderSpecials();
   if (state.planResult) renderResults();
   if (state.pantry.size > 0) suggestFromPantry();
+  renderShareCard();
 }
 
 /* ---------- Mutfak kartları (çoklu seçim) ---------- */
@@ -1025,7 +1037,8 @@ function renderResults() {
       chk.addEventListener('change', () => {
         chk.checked ? state.checked.add(it.name) : state.checked.delete(it.name);
         row.classList.toggle('is-checked', chk.checked);
-        saveState();
+        saveState({ localOnly: true });
+        Sync.check(it.name, chk.checked);
       });
       body.appendChild(row);
     });
@@ -1354,14 +1367,218 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal
   $(sel).addEventListener('input', () => { state.budgetTouched = true; });
 });
 
-/* ---------- Başlat ---------- */
-const restored = loadState();
-if (restored) {
+/* =========================================================
+   Ortak Plan (aile senkronizasyonu) — Supabase
+   Aile kodu bilen cihazlar aynı planı ve alışveriş listesini paylaşır.
+   ========================================================= */
+const SB_URL = 'https://gphqgmanohekuehazizq.supabase.co';
+const SB_KEY = 'sb_publishable_hwcWlAx_PPX0SJs9pJMt4w_qNM7ck2Y';
+const HH_KEY = 'mp-household-v1';
+const CODE_ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function fillSetupInputs() {
   $('#budget-min').value = state.budgetMin;
   $('#budget-max').value = state.budgetMax;
   $('#exclude-free').value = state.excludeFree.join(', ');
   $('#must-free').value = state.mustFree;
 }
+
+const Sync = {
+  code: null, version: 0, online: true, dirty: false, busy: false, timer: null,
+
+  load() {
+    try {
+      const raw = langStore() && langStore().getItem(HH_KEY);
+      if (raw) { const h = JSON.parse(raw); this.code = h.code || null; this.version = h.version || 0; this.dirty = !!h.dirty; }
+    } catch (e) { /* yoksay */ }
+  },
+  persist() {
+    try {
+      const ls = langStore();
+      if (!ls) return;
+      if (this.code) ls.setItem(HH_KEY, JSON.stringify({ code: this.code, version: this.version, dirty: this.dirty }));
+      else ls.removeItem(HH_KEY);
+    } catch (e) { /* yoksay */ }
+  },
+  normalize(raw) {
+    return String(raw || '').toUpperCase().replace(/[^A-Z2-9]/g, '');
+  },
+  pretty(code) { return code ? code.slice(0, 5) + '-' + code.slice(5) : ''; },
+  newCode() {
+    const buf = new Uint32Array(10);
+    crypto.getRandomValues(buf);
+    return [...buf].map((n) => CODE_ALPHA[n % CODE_ALPHA.length]).join('');
+  },
+  async rpc(fn, args) {
+    const res = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {
+      method: 'POST',
+      headers: { apikey: SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  },
+  setOnline(v) {
+    if (this.online !== v) { this.online = v; renderShareCard(); }
+  },
+  schedulePush() {
+    if (!this.code) return;
+    this.dirty = true;
+    this.persist();
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.push(), 600);
+  },
+  async push() {
+    if (!this.code || this.busy) return;
+    this.busy = true;
+    try {
+      const v = await this.rpc('mp_save', { p_code: this.code, p_data: serializeState() });
+      this.version = v; this.dirty = false; this.persist();
+      this.setOnline(true);
+    } catch (e) {
+      this.setOnline(false);
+    } finally { this.busy = false; }
+  },
+  async check(item, checked) {
+    if (!this.code) return;
+    try {
+      const v = await this.rpc('mp_check', { p_code: this.code, p_item: item, p_checked: checked });
+      if (v == null) { this.schedulePush(); return; }
+      /* Başka değişiklik araya girdiyse bir sonraki çekmede gelir */
+      if (v === this.version + 1) { this.version = v; this.persist(); }
+      this.setOnline(true);
+    } catch (e) {
+      this.setOnline(false);
+      this.schedulePush();
+    }
+  },
+  async pull(force) {
+    if (!this.code || this.busy) return;
+    if (this.dirty) { await this.push(); return; }
+    /* Kullanıcı bir alanı düzenlerken ekranı değiştirme */
+    const ae = document.activeElement;
+    if (!force && ae && (ae.tagName === 'INPUT' || ae.tagName === 'SELECT' || ae.tagName === 'TEXTAREA') && ae.type !== 'checkbox') return;
+    this.busy = true;
+    try {
+      const rows = await this.rpc('mp_get', { p_code: this.code });
+      this.setOnline(true);
+      const row = rows && rows[0];
+      if (row && row.version > this.version) {
+        this.version = row.version; this.persist();
+        applyRemoteState(row.data);
+      }
+      return row || null;
+    } catch (e) {
+      this.setOnline(false);
+      return undefined;
+    } finally { this.busy = false; }
+  },
+  async create() {
+    this.code = this.newCode(); this.version = 0; this.dirty = true; this.persist();
+    await this.push();
+    renderShareCard();
+    toast(t('Ortak plan başlatıldı. Linki aile üyelerinize gönderin.'));
+  },
+  async join(raw) {
+    const code = this.normalize(raw);
+    if (!/^[A-Z2-9]{10}$/.test(code)) { toast(t('Geçersiz aile kodu.')); return; }
+    this.code = code; this.version = 0; this.dirty = false; this.persist();
+    renderShareCard();
+    const row = await this.pull(true);
+    if (row === null) {
+      /* Bu kodla kayıt yoksa mevcut planı bu koda kaydet */
+      this.dirty = true;
+      await this.push();
+      toast(t('Bu kodla henüz bir plan yok. Mevcut planınız bu koda kaydedildi.'));
+    } else if (row === undefined) {
+      toast(t('Bağlantı yok — değişiklikler bağlantı gelince gönderilir'));
+    } else {
+      toast(t('Ortak plana katıldınız.'));
+    }
+    renderShareCard();
+  },
+  leave() {
+    this.code = null; this.version = 0; this.dirty = false; this.persist();
+    renderShareCard();
+    toast(t('Ortak plandan ayrıldınız. Plan bu cihazda kalır.'));
+  },
+  link() {
+    return `${location.origin}${location.pathname}?aile=${this.code}`;
+  },
+  async share() {
+    const url = this.link();
+    const text = t('Bu linkle Mutfak Planı\'ndaki ortak planımıza katıl:');
+    try {
+      if (navigator.share) { await navigator.share({ title: 'Mutfak Planı', text, url }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(`${text} ${url}`); toast(t('Link kopyalandı.')); }
+    catch (e) { window.prompt(t('Aile kodu'), url); }
+  },
+};
+
+function applyRemoteState(data) {
+  const wasPlan = !!state.planResult;
+  loadState(data);
+  saveState({ localOnly: true });
+  fillSetupInputs();
+  renderCuisines();
+  renderDiet();
+  renderMembers();
+  renderAllChips();
+  if (state.planResult) {
+    renderResults();
+    $('[data-view="plan"]').hidden = false;
+    if (!wasPlan) { showView('plan'); switchTab('plan'); }
+  }
+  if (wasPlan) toast(t('Ortak plan güncellendi.'));
+}
+
+function renderShareCard() {
+  const host = $('#share-card');
+  if (!host) return;
+  if (!Sync.code) {
+    host.innerHTML = `
+      <h2>${t('Ortak Plan')}</h2>
+      <p class="step-hint">${t('Planı ve alışveriş listesini aile üyeleriyle canlı paylaşın. Biri markette ürün işaretlediğinde diğerinde de görünür.')}</p>
+      <div class="share-actions">
+        <button type="button" class="btn btn-primary" id="btn-share-create" data-testid="button-share-create">${t('Ortak plan başlat')}</button>
+      </div>
+      <form class="share-join" id="share-join">
+        <label class="field">
+          <span>${t('Aile kodunuz var mı?')}</span>
+          <input type="text" id="share-code-input" inputmode="text" autocomplete="off" autocapitalize="characters" placeholder="XXXXX-XXXXX" data-testid="input-share-code">
+        </label>
+        <button type="submit" class="btn btn-outline" data-testid="button-share-join">${t('Katıl')}</button>
+      </form>`;
+    $('#btn-share-create').addEventListener('click', () => Sync.create());
+    $('#share-join').addEventListener('submit', (e) => { e.preventDefault(); Sync.join($('#share-code-input').value); });
+  } else {
+    host.innerHTML = `
+      <h2>${t('Ortak Plan')}</h2>
+      <p class="share-status ${Sync.online ? 'is-online' : 'is-offline'}" data-testid="text-share-status">
+        <span class="share-dot" aria-hidden="true"></span>
+        ${Sync.online ? t('Bu cihaz ortak plana bağlı') : t('Bağlantı yok — değişiklikler bağlantı gelince gönderilir')}
+      </p>
+      <p class="share-code">${t('Aile kodu')}: <strong data-testid="text-share-code">${Sync.pretty(Sync.code)}</strong></p>
+      <div class="share-actions">
+        <button type="button" class="btn btn-primary" id="btn-share-link" data-testid="button-share-link">${t('Linki paylaş')}</button>
+        <button type="button" class="btn btn-ghost" id="btn-share-leave" data-testid="button-share-leave">${t('Ayrıl')}</button>
+      </div>`;
+    $('#btn-share-link').addEventListener('click', () => Sync.share());
+    $('#btn-share-leave').addEventListener('click', () => Sync.leave());
+  }
+  const pill = $('#share-pill');
+  if (pill) {
+    pill.hidden = !Sync.code;
+    pill.textContent = Sync.code ? `👪 ${t('Ortak plan')} · ${Sync.pretty(Sync.code)}` : '';
+    pill.classList.toggle('is-offline', !Sync.online);
+  }
+}
+
+/* ---------- Başlat ---------- */
+const restored = loadState();
+if (restored) fillSetupInputs();
+Sync.load();
 applyStaticI18n();
 renderLangSwitch();
 renderCuisines();
@@ -1379,3 +1596,23 @@ if (state.planResult) {
 } else {
   showView('home');
 }
+renderShareCard();
+$('#share-pill').addEventListener('click', () => {
+  showView('home');
+  $('#share-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+/* Davet linkiyle gelindiyse (…?aile=KOD) otomatik katıl */
+(function handleInviteLink() {
+  let code = null;
+  try { code = new URLSearchParams(location.search).get('aile'); } catch (e) { /* yoksay */ }
+  if (code) {
+    try { history.replaceState(null, '', location.pathname); } catch (e) { /* yoksay */ }
+    if (Sync.normalize(code) !== Sync.code) Sync.join(code);
+    return;
+  }
+  if (Sync.code) Sync.pull(true);
+})();
+setInterval(() => { if (document.visibilityState === 'visible') Sync.pull(false); }, 5000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') Sync.pull(false); });
+window.addEventListener('online', () => Sync.pull(true));

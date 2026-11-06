@@ -5,7 +5,7 @@
    ve "telefona kur" özelliğini sağlar.
    Yeni sürüm yayınlanınca CACHE_VERSION artırılmalıdır.
    ========================================================= */
-const CACHE_VERSION = 'mutfak-plani-v2';
+const CACHE_VERSION = 'mutfak-plani-v3';
 const CORE_ASSETS = [
   './',
   './index.html',
