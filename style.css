@@ -1,22 +1,22 @@
 :root {
   /* Warm kitchen palette — cream surfaces, terracotta accent, olive support */
-  --color-bg: #faf6ef;
-  --color-surface: #fffdf8;
-  --color-surface-2: #f5efe3;
-  --color-surface-offset: #efe7d7;
-  --color-divider: #e7ddc8;
-  --color-border: #d9cdb2;
-  --color-text: #2d2418;
-  --color-text-muted: #7d7260;
-  --color-text-faint: #b0a68f;
-  --color-accent: #c2571b;
-  --color-accent-hover: #a84715;
-  --color-accent-soft: #f6e3d3;
-  --color-olive: #5a6b3b;
-  --color-olive-soft: #e8ecdc;
-  --color-blue: #3d5a80;
-  --color-blue-soft: #dfe7f0;
-  --color-error: #a12c2c;
+  --color-bg: #f6faf4;
+  --color-surface: #ffffff;
+  --color-surface-2: #f0f7ee;
+  --color-surface-offset: #e6f1e3;
+  --color-divider: #e1ece0;
+  --color-border: #cfe0cc;
+  --color-text: #1f2d22;
+  --color-text-muted: #5d6e60;
+  --color-text-faint: #98a99a;
+  --color-accent: #3f8f4f;
+  --color-accent-hover: #2f7a3f;
+  --color-accent-soft: #e1f2e2;
+  --color-olive: #6c8f1f;
+  --color-olive-soft: #eef5dc;
+  --color-blue: #2f6f8f;
+  --color-blue-soft: #e1eff5;
+  --color-error: #b3362d;
 
   --font-display: 'Fraunces', Georgia, serif;
   --font-body: 'Work Sans', 'Helvetica Neue', sans-serif;
@@ -43,9 +43,9 @@
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
 
-  --shadow-sm: 0 1px 2px rgba(45, 36, 24, 0.06);
-  --shadow-md: 0 4px 12px rgba(45, 36, 24, 0.08);
-  --shadow-lg: 0 12px 32px rgba(45, 36, 24, 0.14);
+  --shadow-sm: 0 1px 2px rgba(31, 45, 34, 0.06);
+  --shadow-md: 0 4px 12px rgba(31, 45, 34, 0.08);
+  --shadow-lg: 0 12px 32px rgba(31, 45, 34, 0.14);
 
   --transition-interactive: 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -1330,58 +1330,6 @@
   .fridge-input-row { flex-direction: column; align-items: stretch; }
 }
 
-/* =========================================================
-   v6: Karanlık mod
-   ========================================================= */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --color-bg: #1b1712;
-    --color-surface: #24201a;
-    --color-surface-2: #2c2720;
-    --color-surface-offset: #353027;
-    --color-divider: #3d362c;
-    --color-border: #4d4538;
-    --color-text: #f1e9da;
-    --color-text-muted: #b8ad98;
-    --color-text-faint: #8a8070;
-    --color-accent: #e0763a;
-    --color-accent-hover: #f08a4e;
-    --color-accent-soft: #43291a;
-    --color-olive: #a9bb82;
-    --color-olive-soft: #2c3322;
-    --color-blue: #8fb0d8;
-    --color-blue-soft: #1f2a38;
-    --color-error: #e06a6a;
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.35);
-    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
-    --badge-real-bg: #213421; --badge-real-fg: #9fd39f;
-    --badge-surprise-bg: #2f2840; --badge-surprise-fg: #c3b5e8;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --color-bg: #1b1712;
-  --color-surface: #24201a;
-  --color-surface-2: #2c2720;
-  --color-surface-offset: #353027;
-  --color-divider: #3d362c;
-  --color-border: #4d4538;
-  --color-text: #f1e9da;
-  --color-text-muted: #b8ad98;
-  --color-text-faint: #8a8070;
-  --color-accent: #e0763a;
-  --color-accent-hover: #f08a4e;
-  --color-accent-soft: #43291a;
-  --color-olive: #a9bb82;
-  --color-olive-soft: #2c3322;
-  --color-blue: #8fb0d8;
-  --color-blue-soft: #1f2a38;
-  --color-error: #e06a6a;
-  --badge-real-bg: #213421; --badge-real-fg: #9fd39f;
-  --badge-surprise-bg: #2f2840; --badge-surprise-fg: #c3b5e8;
-  color-scheme: dark;
-}
 .price-badge.is-real { background: var(--badge-real-bg, #e4efe4); color: var(--badge-real-fg, #2c5e2c); }
 .surprise-badge { background: var(--badge-surprise-bg, #ece7f5); color: var(--badge-surprise-fg, #5a4a82); }
 .modal-backdrop { background: rgba(10, 8, 5, 0.6); }
@@ -1415,3 +1363,42 @@
 }
 .share-pill.is-offline { background: var(--color-accent-soft); }
 .share-pill[hidden] { display: none; }
+
+/* =========================================================
+   v8: Besin bilgisi, gereç ipuçları, tat testi
+   ========================================================= */
+.nutri-list { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 10px; }
+.nutri-list li { display: flex; gap: 10px; align-items: flex-start; background: var(--color-surface-2); border-radius: var(--radius-md); padding: 10px 12px; }
+.nutri-icon { font-size: 1.3rem; line-height: 1.2; }
+.nutri-src { display: block; color: var(--color-text-muted); font-size: var(--text-xs); margin-top: 2px; }
+.nutri-note { color: var(--color-text-faint); font-size: var(--text-xs); margin: 4px 0 0; }
+.equip-tips { background: var(--color-accent-soft); border-radius: var(--radius-md); padding: 8px 12px; margin: 12px 0; }
+.equip-tips p { margin: 4px 0; font-size: var(--text-sm); }
+.setup-cta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+
+.taste-backdrop { position: fixed; inset: 0; z-index: 60; background: rgba(31, 45, 34, 0.55); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.taste-backdrop[hidden] { display: none; }
+.taste-panel { background: var(--color-bg); border-radius: var(--radius-xl); width: min(420px, 100%); max-height: 100%; overflow: auto; padding: 18px 16px 16px; box-shadow: var(--shadow-lg); }
+.taste-head { text-align: center; position: relative; }
+.taste-head h2 { font-family: var(--font-display); font-size: var(--text-lg); margin: 0 0 4px; }
+.taste-progress { display: inline-block; margin-top: 4px; font-size: var(--text-xs); color: var(--color-text-muted); background: var(--color-surface-offset); border-radius: 999px; padding: 2px 10px; }
+.taste-stage { position: relative; margin: 14px 0; min-height: 330px; touch-action: pan-y; }
+.taste-card { position: relative; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); overflow: hidden; box-shadow: var(--shadow-md); cursor: grab; user-select: none; touch-action: pan-y; }
+.taste-card:active { cursor: grabbing; }
+.taste-visual { height: 170px; display: flex; align-items: center; justify-content: center; position: relative;
+  background: radial-gradient(circle at 30% 30%, hsl(var(--hue) 70% 92%), hsl(var(--hue) 45% 80%)); }
+.taste-emoji { font-size: 84px; filter: drop-shadow(0 6px 10px rgba(0,0,0,.15)); }
+.taste-cuisine { position: absolute; left: 12px; top: 12px; background: rgba(255,255,255,.9); border-radius: 999px; padding: 3px 10px; font-size: var(--text-xs); font-weight: 600; }
+.taste-body { padding: 12px 14px 14px; }
+.taste-body h3 { margin: 0 0 2px; font-family: var(--font-display); font-size: var(--text-lg); }
+.taste-meta { margin: 0; color: var(--color-text-muted); font-size: var(--text-sm); }
+.taste-ings { margin: 6px 0 8px; font-size: var(--text-sm); }
+.taste-stamp { position: absolute; top: 18px; padding: 4px 10px; border: 3px solid; border-radius: 8px; font-weight: 800; letter-spacing: .06em; opacity: 0; transition: opacity .15s; background: rgba(255,255,255,.85); }
+.taste-stamp.like { right: 16px; color: var(--color-accent); transform: rotate(10deg); }
+.taste-stamp.nope { left: 16px; color: var(--color-error); transform: rotate(-10deg); }
+.taste-card.is-like .taste-stamp.like, .taste-card.is-nope .taste-stamp.nope { opacity: 1; }
+.taste-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.taste-btn { width: 60px; height: 60px; border-radius: 50%; border: 2px solid var(--color-border); background: var(--color-surface); font-size: 1.6rem; cursor: pointer; box-shadow: var(--shadow-sm); }
+.taste-btn.like { color: var(--color-accent); border-color: var(--color-accent); }
+.taste-btn.nope { color: var(--color-error); border-color: #e7b9b4; }
+.taste-btn:active { transform: scale(.94); }

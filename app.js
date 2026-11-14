@@ -151,6 +151,9 @@ const LIGHT_TAGS = ['sebze', 'corba', 'balik'];
 function recipeExcluded(recipe, st) {
   const names = recipe.ingredients.map((i) => i[0]);
   if (recipe.allergens.some((a) => st.allergens.has(a))) return true;
+  /* Fırın gerektiren tarif: fırın da airfryer da yoksa önerme */
+  if (st.equipment && recipe.needs && recipe.needs.includes('firin')
+    && !st.equipment.has('firin') && !st.equipment.has('airfryer')) return true;
   if (st.diet) {
     if (st.diet.style === 'vegan' && !recipe.tags.includes('vegan')) return true;
     if (st.diet.style === 'veg' && !recipe.tags.includes('vegan') && !recipe.tags.includes('vejetaryen')) return true;
@@ -229,6 +232,14 @@ function poolsFor(st) {
   };
 }
 
+function tasteFactor(r, taste) {
+  if (!taste) return 1;
+  if (taste.liked.includes(r.id)) return 4;
+  if (taste.disliked.includes(r.id)) return 0.1;
+  const w = r.tags.reduce((s, tg) => s + (taste.tagW[tg] || 0), 0);
+  return Math.min(3, Math.max(0.3, Math.exp(0.4 * w)));
+}
+
 function buildPlan(st) {
   const P = Math.max(totalPortions(st.members), 1);
   const scale = P / 4;
@@ -273,8 +284,10 @@ function buildPlan(st) {
   let best = null;
   let relaxedBest = null;
 
+  /* Tat testi sonucu: beğenilen yemek/türler öne çıkar, beğenilmeyenler geri düşer */
+  const dOf = (r) => wOf(r) * tasteFactor(r, st.taste);
   for (let iter = 0; iter < 600; iter++) {
-    const pick = weightedSample(pools.dinners, 7, wOf);
+    const pick = weightedSample(pools.dinners, 7, dOf);
     const ok = satisfiesRules(pick, activeRules);
     let dinnerCost = 0;
     pick.forEach((r) => { dinnerCost += recipeCost(r) * scale; });
@@ -284,6 +297,7 @@ function buildPlan(st) {
     const score =
       (mustFree ? Math.min(mustFreeCount(pick), 3) * 4 : 0) +
       new Set(pick.flatMap((r) => r.tags)).size +
+      (st.taste ? pick.reduce((a, r) => a + (st.taste.liked.includes(r.id) ? 3 : 0) - (st.taste.disliked.includes(r.id) ? 6 : 0), 0) : 0) +
       (ok ? 10 : 0) +
       (st.diet && st.diet.athlete
         ? Math.min(pick.filter((r) => r.tags.some((t) => PROTEIN_TAGS.includes(t))).length, 5) * 3 : 0) +
@@ -383,6 +397,7 @@ function serializeState() {
       members: state.members, budgetMin: state.budgetMin, budgetMax: state.budgetMax,
       budgetTouched: state.budgetTouched,
       allergens: [...state.allergens], dislikes: [...state.dislikes], excludeFree: state.excludeFree,
+      equipment: [...state.equipment], taste: state.taste,
       mustRules: [...state.mustRules], mustFree: state.mustFree,
       plan: pr ? pr.plan.map((d) => ({
         day: d.day, b: d.breakfast && d.breakfast.id, lb: d.lunchbox && d.lunchbox.id,
@@ -427,6 +442,8 @@ function loadState(fromData) {
     state.budgetTouched = !!d.budgetTouched;
     state.allergens = new Set(d.allergens || []);
     state.dislikes = new Set(d.dislikes || []);
+    if (Array.isArray(d.equipment)) state.equipment = new Set(d.equipment);
+    state.taste = d.taste || null;
     state.excludeFree = d.excludeFree || [];
     state.mustRules = new Set(d.mustRules || []);
     state.mustFree = d.mustFree || '';
@@ -563,6 +580,8 @@ const state = {
   budgetTouched: false, /* kullanıcı bütçeyi elle değiştirdiyse otomatik öneri yapılmaz */
   allergens: new Set(),
   dislikes: new Set(),
+  equipment: new Set(['firin', 'blender', 'tost', 'mikrodalga']),
+  taste: null,         /* { key, liked:[], disliked:[], tagW:{} } — kaydırmalı tat testi */
   excludeFree: [],
   mustRules: new Set(['baklagil2', 'corba1']),
   mustFree: '',
@@ -806,6 +825,10 @@ function renderAllChips() {
     state.dislikes.has(v) ? state.dislikes.delete(v) : state.dislikes.add(v);
     renderAllChips();
   }, true);
+  renderChips('#equip-chips', EQUIPMENT.map((e) => [e.id, t(e.label)]), state.equipment, (v) => {
+    state.equipment.has(v) ? state.equipment.delete(v) : state.equipment.add(v);
+    renderAllChips();
+  }, false);
   renderChips('#must-chips', MUST_RULES.map((r) => [r.id, tMust(r.id)]), state.mustRules, (v) => {
     state.mustRules.has(v) ? state.mustRules.delete(v) : state.mustRules.add(v);
     renderAllChips();
@@ -813,6 +836,11 @@ function renderAllChips() {
 }
 
 /* ---------- Plan üretimi ---------- */
+function startPlanning(forceTaste) {
+  if (state.cuisines.size === 0) { toast(t('En az bir mutfak seçin.')); return; }
+  if (forceTaste || !state.taste || state.taste.key !== Taste.key()) Taste.start(generateAndShow);
+  else generateAndShow();
+}
 function generateAndShow() {
   if (state.cuisines.size === 0) { toast(t('En az bir mutfak seçin.')); return; }
   const mn = parseFloat($('#budget-min').value);
@@ -1166,12 +1194,167 @@ function openModal(recipe, ctx) {
       const unit = ing.unit === 'g' ? 'g' : tUnit(ing.unit);
       return `<li><span>${tIng(name)}</span><span>${q} ${unit}</span></li>`;
     }).join('')}</ul>
+    ${equipTips(recipe)}
     <h4>${t('Hazırlanışı')}</h4>
-    <ol class="steps">${tSteps(recipe).map((s) => `<li>${s}</li>`).join('')}</ol>`;
+    <ol class="steps">${tSteps(recipe).map((s) => `<li>${s}</li>`).join('')}</ol>
+    ${nutritionBlock(recipe)}`;
   $('#modal').hidden = false;
   document.body.style.overflow = 'hidden';
   modal.querySelector('.modal-close').addEventListener('click', closeModal);
 }
+function nutritionBlock(recipe) {
+  const list = nutritionOf(recipe);
+  if (!list.length) return '';
+  return `<h4>${t('Besin değeri ve faydaları')}</h4>
+    <ul class="nutri-list">${list.map(({ key, sources }) => {
+      const n = NUTRIENTS[key];
+      return `<li><span class="nutri-icon" aria-hidden="true">${n.icon}</span>
+        <div><strong>${t(n.label)}</strong> — ${t(n.benefit)}
+        <span class="nutri-src">${t('Kaynağı:')} ${[...new Set(sources)].map(tIng).join(', ')}</span></div></li>`;
+    }).join('')}</ul>
+    <p class="nutri-note">${t('Genel bilgilendirmedir, tıbbi tavsiye değildir. Değerler malzemelerin bilinen başlıca besin kaynaklarına göre gösterilir.')}</p>`;
+}
+function equipTips(recipe) {
+  const eq = state.equipment;
+  const tips = [];
+  const needs = recipe.needs || [];
+  if (needs.includes('firin') && !eq.has('firin') && eq.has('airfryer')) tips.push(t('Fırın yerine airfryer kullanabilirsiniz: sıcaklığı ~20 °C düşürün, süreyi biraz kısaltın.'));
+  if (needs.includes('blender') && !eq.has('blender')) tips.push(t('Blender yoksa çatal veya patates eziciyle ezin; çorbaları taneli de servis edebilirsiniz.'));
+  if (needs.includes('tost') && !eq.has('tost')) tips.push(t('Tost makinesi yoksa tavada, üzerine bir kapak bastırarak kızartın.'));
+  if (needs.includes('mangal') && !eq.has('mangal')) tips.push(t('Izgara yoksa döküm tavada veya fırının ızgara ayarında pişirin.'));
+  if (eq.has('duduklu') && recipe.tags.some((tg) => tg === 'baklagil' || tg === 'etli')) tips.push(t('Düdüklü tencerede pişirme süresi yaklaşık yarıya iner.'));
+  if (!tips.length) return '';
+  return `<div class="equip-tips">${tips.map((x) => `<p>🍳 ${x}</p>`).join('')}</div>`;
+}
+
+/* =========================================================
+   v8: TAT TESTİ — sağa kaydır: beğendim, sola: beğenmedim
+   ========================================================= */
+const TAG_EMOJI = [
+  ['balik', '🐟'], ['corba', '🍲'], ['makarna', '🍝'], ['tavuk', '🍗'], ['etli', '🥩'],
+  ['baklagil', '🫘'], ['firin', '🥘'], ['sebze', '🥗'], ['tahil', '🍚'],
+];
+function recipeEmoji(r) {
+  const hit = TAG_EMOJI.find(([tg]) => r.tags.includes(tg));
+  return hit ? hit[1] : '🍽️';
+}
+const CUISINE_HUE = { tr: 12, it: 130, fr: 220, de: 40, gr: 200, cn: 0, in: 30, mx: 90, jp: 340 };
+const Taste = {
+  deck: [], shown: new Set(), liked: [], disliked: [], tagW: {}, perCuisine: 3, done: 0, total: 0,
+  key() { return [...state.cuisines].sort().join(',') + '|' + state.diet.style; },
+  candidates(cuisine) {
+    return RECIPES.filter((r) => r.meal === 'dinner' && r.cuisine === cuisine
+      && !recipeExcluded(r, state) && !this.shown.has(r.id));
+  },
+  /* Aynı mutfaktan, beğenilmeyene en az benzeyen bir yemek seç */
+  pickFrom(cuisine, avoidTags) {
+    const c = this.candidates(cuisine);
+    if (!c.length) return null;
+    const score = (r) => {
+      const overlap = avoidTags ? r.tags.filter((tg) => avoidTags.includes(tg) && tg !== 'pratik' && tg !== 'vejetaryen' && tg !== 'vegan').length : 0;
+      const novelty = r.tags.filter((tg) => !this.seenTags.has(tg)).length;
+      return novelty - overlap * 3 + Math.random();
+    };
+    c.sort((a, b) => score(b) - score(a));
+    return c[0];
+  },
+  start(onDone) {
+    this.onDone = onDone;
+    this.shown = new Set(); this.seenTags = new Set();
+    this.liked = []; this.disliked = []; this.tagW = {}; this.deck = [];
+    const cs = [...state.cuisines];
+    this.perCuisine = cs.length === 1 ? 6 : cs.length === 2 ? 4 : 3;
+    const limit = Math.min(12, this.perCuisine * cs.length);
+    for (let round = 0; round < this.perCuisine; round++) {
+      for (const c of cs) {
+        if (this.deck.length >= limit) break;
+        const r = this.pickFrom(c, null);
+        if (r) { this.deck.push(r); this.shown.add(r.id); r.tags.forEach((tg) => this.seenTags.add(tg)); }
+      }
+    }
+    this.extra = 0;
+    this.total = this.deck.length; this.done = 0;
+    if (!this.deck.length) { this.finish(); return; }
+    $('#taste').hidden = false;
+    document.body.style.overflow = 'hidden';
+    this.render();
+  },
+  vote(like) {
+    const r = this.deck.shift();
+    if (!r) return;
+    this.done++;
+    const delta = like ? 1 : -1;
+    r.tags.filter((tg) => tg !== 'pratik').forEach((tg) => { this.tagW[tg] = (this.tagW[tg] || 0) + delta; });
+    (like ? this.liked : this.disliked).push(r.id);
+    /* Beğenilmezse aynı mutfaktan farklı türde bir öneri daha (en fazla 4 ek kart) */
+    if (!like && this.extra < 4) {
+      const alt = this.pickFrom(r.cuisine, r.tags);
+      if (alt) { this.deck.unshift(alt); this.shown.add(alt.id); this.extra++; this.total++; }
+    }
+    if (!this.deck.length) this.finish(); else this.render();
+  },
+  finish() {
+    state.taste = { key: this.key(), liked: this.liked, disliked: this.disliked, tagW: this.tagW };
+    this.close();
+    if (this.onDone) this.onDone();
+  },
+  /* Yarıda bırakılırsa o ana kadarki oylar kullanılır */
+  skip() { this.finish(); },
+  close() {
+    $('#taste').hidden = true;
+    document.body.style.overflow = '';
+  },
+  render() {
+    const r = this.deck[0];
+    const stage = $('#taste-stage');
+    const hue = CUISINE_HUE[r.cuisine] != null ? CUISINE_HUE[r.cuisine] : 140;
+    const ings = r.ingredients.filter(([n]) => !['tuz', 'karabiber', 'sıvı yağ', 'su'].includes(n)).slice(0, 5).map(([n]) => tIng(n)).join(' · ');
+    $('#taste-progress').textContent = tFmt('{a} / {b}', { a: this.done + 1, b: this.total });
+    stage.innerHTML = `
+      <article class="taste-card" id="taste-card" data-testid="card-taste" style="--hue:${hue}">
+        <div class="taste-visual"><span class="taste-emoji" aria-hidden="true">${recipeEmoji(r)}</span>
+          <span class="taste-cuisine">${cuisineName(r.cuisine)}</span></div>
+        <div class="taste-body">
+          <h3>${displayName(r)}</h3>
+          <p class="taste-meta">${r.time} ${t('dk')} · ${fmtEur(recipeCost(r) / r.serves)}${t('/porsiyon')}</p>
+          <p class="taste-ings">${ings}</p>
+          <div class="tag-row">${r.tags.filter((tg) => tg !== 'pratik').map(tagPill).join('')}</div>
+        </div>
+        <span class="taste-stamp like">${t('BEĞENDİM')}</span>
+        <span class="taste-stamp nope">${t('GEÇ')}</span>
+      </article>`;
+    this.bindDrag($('#taste-card'));
+  },
+  bindDrag(card) {
+    let x0 = null, dx = 0;
+    const move = (e) => {
+      if (x0 === null) return;
+      dx = e.clientX - x0;
+      card.style.transform = `translateX(${dx}px) rotate(${dx / 18}deg)`;
+      card.classList.toggle('is-like', dx > 40);
+      card.classList.toggle('is-nope', dx < -40);
+    };
+    const up = () => {
+      if (x0 === null) return;
+      x0 = null;
+      if (Math.abs(dx) > 90) this.fling(dx > 0);
+      else { card.style.transition = 'transform .2s'; card.style.transform = ''; card.classList.remove('is-like', 'is-nope'); }
+    };
+    card.addEventListener('pointerdown', (e) => { x0 = e.clientX; dx = 0; card.style.transition = 'none'; card.setPointerCapture(e.pointerId); });
+    card.addEventListener('pointermove', move);
+    card.addEventListener('pointerup', up);
+    card.addEventListener('pointercancel', up);
+  },
+  fling(like) {
+    const card = $('#taste-card');
+    if (!card) { this.vote(like); return; }
+    card.style.transition = 'transform .25s ease-in, opacity .25s';
+    card.style.transform = `translateX(${like ? 420 : -420}px) rotate(${like ? 18 : -18}deg)`;
+    card.style.opacity = '0';
+    setTimeout(() => this.vote(like), 220);
+  },
+};
+
 function closeModal() {
   $('#modal').hidden = true;
   document.body.style.overflow = '';
@@ -1342,7 +1525,17 @@ $('#btn-add-member').addEventListener('click', () => {
   state.members.push({ age: 30, gender: 'e', morning: 'ev' });
   renderMembers();
 });
-$('#btn-generate').addEventListener('click', generateAndShow);
+$('#btn-generate').addEventListener('click', () => startPlanning(false));
+$('#btn-taste-redo').addEventListener('click', () => startPlanning(true));
+$('#taste-like').addEventListener('click', () => Taste.fling(true));
+$('#taste-nope').addEventListener('click', () => Taste.fling(false));
+$('#taste-skip').addEventListener('click', () => Taste.skip());
+document.addEventListener('keydown', (e) => {
+  if ($('#taste').hidden) return;
+  if (e.key === 'ArrowRight') Taste.fling(true);
+  if (e.key === 'ArrowLeft') Taste.fling(false);
+  if (e.key === 'Escape') Taste.skip();
+});
 $('#btn-regen').addEventListener('click', () => { generateAndShow(); toast(t('Yeni bir plan oluşturuldu.')); });
 $('#btn-edit-setup').addEventListener('click', () => showView('home'));
 $('#brand-home').addEventListener('click', () => showView('home'));

@@ -781,3 +781,86 @@ for (const r of RECIPES) {
   if (r.diet === 'vegan') r.tags.push('vegan');
   else if (r.diet === 'veg') r.tags.push('vejetaryen');
 }
+
+/* =========================================================
+   v8: BESİN DEĞERLERİ (genel bilgi — malzemelerin bilinen
+   başlıca vitamin/mineral kaynakları; tıbbi tavsiye değildir)
+   ========================================================= */
+const NUTRIENTS = {
+  protein:   { label: 'Protein',    icon: '💪', benefit: 'Kas ve doku yapımına katkı sağlar, uzun süre tok tutar.' },
+  lif:       { label: 'Lif',        icon: '🌾', benefit: 'Sindirimi destekler ve tokluk hissini uzatır.' },
+  vitA:      { label: 'A vitamini', icon: '👁️', benefit: 'Göz ve cilt sağlığı ile bağışıklık için önemlidir.' },
+  vitC:      { label: 'C vitamini', icon: '🍋', benefit: 'Bağışıklığı destekler, bitkisel demirin emilimini artırır.' },
+  vitB12:    { label: 'B12 vitamini', icon: '🧠', benefit: 'Sinir sistemi ve kan yapımı için gereklidir.' },
+  vitD:      { label: 'D vitamini', icon: '☀️', benefit: 'Kalsiyum emilimine ve kemik sağlığına katkı sağlar.' },
+  vitE:      { label: 'E vitamini', icon: '🌻', benefit: 'Hücreleri oksidatif strese karşı korumaya yardımcı olur.' },
+  vitK:      { label: 'K vitamini', icon: '🥬', benefit: 'Normal kan pıhtılaşması ve kemik sağlığı için gereklidir.' },
+  folat:     { label: 'Folat',      icon: '🌱', benefit: 'Hücre yenilenmesine katkı sağlar; hamilelikte özellikle önemlidir.' },
+  demir:     { label: 'Demir',      icon: '🩸', benefit: 'Kanda oksijen taşınmasına yardımcı olur, yorgunluğa karşı önemlidir.' },
+  kalsiyum:  { label: 'Kalsiyum',   icon: '🦴', benefit: 'Kemik ve diş sağlığı için temel mineraldir.' },
+  magnezyum: { label: 'Magnezyum',  icon: '⚡', benefit: 'Kas ve sinir işlevlerine katkı sağlar.' },
+  potasyum:  { label: 'Potasyum',   icon: '❤️', benefit: 'Kalp ve kas işlevini, normal tansiyonu destekler.' },
+  omega3:    { label: 'Omega-3',    icon: '🐟', benefit: 'Kalp ve beyin sağlığına katkı sağlar.' },
+};
+/* malzeme → başlıca kaynağı olduğu besinler */
+const ING_NUTRI = {
+  'kırmızı mercimek': ['protein', 'lif', 'demir', 'folat'], 'nohut': ['protein', 'lif', 'demir', 'folat', 'magnezyum'],
+  'kuru fasulye': ['protein', 'lif', 'demir', 'potasyum', 'folat'], 'bulgur': ['lif', 'magnezyum'],
+  'yulaf': ['lif', 'magnezyum', 'demir'], 'erişte': ['protein'], 'makarna': ['protein'],
+  'zeytinyağı': ['vitE'], 'domates': ['vitC', 'potasyum', 'vitA'], 'domates salçası': ['potasyum'],
+  'dana kıyma': ['protein', 'demir', 'vitB12'], 'kuşbaşı dana et': ['protein', 'demir', 'vitB12'],
+  'tavuk göğsü': ['protein'], 'tavuk but': ['protein', 'demir'],
+  'patlıcan': ['lif', 'potasyum'], 'kabak': ['vitC', 'potasyum'], 'biber': ['vitC', 'vitA'],
+  'havuç': ['vitA', 'lif'], 'patates': ['potasyum', 'vitC'], 'ıspanak': ['demir', 'vitK', 'folat', 'vitA', 'magnezyum'],
+  'pırasa': ['vitK', 'lif'], 'karnabahar': ['vitC', 'lif', 'vitK'], 'dondurulmuş bezelye': ['protein', 'lif', 'vitC'],
+  'taze fasulye': ['lif', 'vitK', 'vitC'], 'mantar': ['vitD', 'potasyum'], 'brokoli': ['vitC', 'vitK', 'lif', 'folat'],
+  'salatalık': ['vitK'], 'marul': ['vitK', 'folat'], 'süt': ['kalsiyum', 'protein', 'vitB12'],
+  'yoğurt': ['kalsiyum', 'protein', 'vitB12'], 'lor': ['protein', 'kalsiyum'], 'beyaz peynir': ['kalsiyum', 'protein'],
+  'kaşar peyniri': ['kalsiyum', 'protein'], 'yumurta': ['protein', 'vitB12', 'vitD'],
+  'tahin': ['kalsiyum', 'demir', 'magnezyum'], 'pekmez': ['demir'], 'muz': ['potasyum'],
+  'somon fileto': ['omega3', 'protein', 'vitD', 'vitB12'], 'ton balığı konserve': ['protein', 'omega3', 'vitB12'],
+  'limon': ['vitC'], 'maydanoz': ['vitC', 'vitK'], 'dereotu': ['vitC'], 'ceviz': ['omega3', 'magnezyum'],
+  'bitter çikolata': ['magnezyum', 'demir'], 'elma': ['lif'], 'portakal': ['vitC', 'folat'],
+  'lahana': ['vitC', 'vitK', 'lif'], 'kereviz': ['vitK', 'lif'], 'avokado': ['vitE', 'potasyum', 'lif'],
+  'schinken (jambon)': ['protein'], 'parmesan': ['kalsiyum', 'protein'], 'mozzarella': ['kalsiyum', 'protein'],
+  'karışık berry (donmuş)': ['vitC', 'lif'], 'grieß (irmik)': [],
+};
+/* Bir tarifin başlıca besinleri: porsiyon başına anlamlı miktarda bulunan malzemelerden */
+function nutritionOf(recipe) {
+  const serves = recipe.serves || 4;
+  const found = {};
+  for (const [name, qty] of recipe.ingredients) {
+    const list = ING_NUTRI[name];
+    if (!list || !list.length) continue;
+    const unit = ING[name].unit;
+    const perServ = qty / serves;
+    const enough = unit === 'g' ? perServ >= 20 : unit === 'adet' ? perServ >= 0.2 : unit === 'tutam' ? qty >= 1 : false;
+    if (!enough) continue;
+    for (const n of list) (found[n] = found[n] || []).push(name);
+  }
+  return Object.entries(found)
+    .sort((a, b) => b[1].length - a[1].length)
+    .slice(0, 5)
+    .map(([key, sources]) => ({ key, sources }));
+}
+
+/* =========================================================
+   v8: MUTFAK GEREÇLERİ — tarifin hazırlanışından türetilir
+   ========================================================= */
+const EQUIPMENT = [
+  { id: 'firin', label: 'Fırın' },
+  { id: 'airfryer', label: 'Airfryer' },
+  { id: 'blender', label: 'Blender / mutfak robotu' },
+  { id: 'tost', label: 'Tost makinesi' },
+  { id: 'mikrodalga', label: 'Mikrodalga' },
+  { id: 'duduklu', label: 'Düdüklü tencere' },
+  { id: 'mangal', label: 'Izgara / mangal' },
+];
+for (const r of RECIPES) {
+  const txt = r.steps.join(' ');
+  r.needs = [];
+  if (/fırın/i.test(txt)) r.needs.push('firin');
+  if (/blender|robot|rondo/i.test(txt)) r.needs.push('blender');
+  if (/tost makine/i.test(txt)) r.needs.push('tost');
+  if (/mangal|ızgara/i.test(txt)) r.needs.push('mangal');
+}
