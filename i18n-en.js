@@ -507,3 +507,11 @@ Object.assign(window.I18N.en.ui, {
   "Beğendim": "I like it",
   "Atla, planı oluştur": "Skip, create plan",
 });
+
+/* ---- v9: mevsim ---- */
+Object.assign(window.I18N.en.ui, {
+  "Mevsim sebze-meyveleri öncelikli": "Prefer seasonal fruit & veg",
+  "mevsiminde": "in season",
+  "Şu an mevsiminde:": "In season now:",
+  "Mevsim dışı (ithal/sera):": "Out of season (imported/greenhouse):",
+});

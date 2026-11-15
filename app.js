@@ -232,6 +232,13 @@ function poolsFor(st) {
   };
 }
 
+const CUR_MONTH = new Date().getMonth() + 1;
+/* Mevsiminde sebze/meyve içeren yemekleri öne çıkar, mevsim dışını geri it */
+function seasonFactor(r, st) {
+  if (!st.diet || !st.diet.seasonal) return 1;
+  const { score } = seasonInfo(r, CUR_MONTH);
+  return Math.min(2.5, Math.max(0.35, Math.exp(0.45 * score)));
+}
 function tasteFactor(r, taste) {
   if (!taste) return 1;
   if (taste.liked.includes(r.id)) return 4;
@@ -269,7 +276,7 @@ function buildPlan(st) {
   const wOf = (r) => cuisineWeight(r.cuisine, st);
   let bCycle = [];
   if (homeP > 0) {
-    for (let i = 0; i < 7; i++) bCycle.push(weightedPick(pools.breakfasts, wOf));
+    for (let i = 0; i < 7; i++) bCycle.push(weightedPick(pools.breakfasts, (r) => wOf(r) * seasonFactor(r, st)));
   }
 
   /* Beslenme çantası: iş/okul gidenler için */
@@ -285,7 +292,7 @@ function buildPlan(st) {
   let relaxedBest = null;
 
   /* Tat testi sonucu: beğenilen yemek/türler öne çıkar, beğenilmeyenler geri düşer */
-  const dOf = (r) => wOf(r) * tasteFactor(r, st.taste);
+  const dOf = (r) => wOf(r) * tasteFactor(r, st.taste) * seasonFactor(r, st);
   for (let iter = 0; iter < 600; iter++) {
     const pick = weightedSample(pools.dinners, 7, dOf);
     const ok = satisfiesRules(pick, activeRules);
@@ -297,6 +304,7 @@ function buildPlan(st) {
     const score =
       (mustFree ? Math.min(mustFreeCount(pick), 3) * 4 : 0) +
       new Set(pick.flatMap((r) => r.tags)).size +
+      (st.diet && st.diet.seasonal ? pick.reduce((a, r) => a + Math.max(-2, Math.min(2, seasonInfo(r, CUR_MONTH).score)), 0) : 0) +
       (st.taste ? pick.reduce((a, r) => a + (st.taste.liked.includes(r.id) ? 3 : 0) - (st.taste.disliked.includes(r.id) ? 6 : 0), 0) : 0) +
       (ok ? 10 : 0) +
       (st.diet && st.diet.athlete
@@ -435,7 +443,7 @@ function loadState(fromData) {
     };
     state.cuisines = new Set(d.cuisines || ['tr']);
     state.cuisineWeights = d.cuisineWeights || {};
-    state.diet = Object.assign({ style: 'normal', halal: false, athlete: false, light: false }, d.diet);
+    state.diet = Object.assign({ style: 'normal', halal: false, athlete: false, light: false, seasonal: true }, d.diet);
     if (Array.isArray(d.members) && d.members.length) state.members = d.members;
     state.budgetMin = d.budgetMin || state.budgetMin;
     state.budgetMax = d.budgetMax || state.budgetMax;
@@ -570,7 +578,7 @@ const state = {
   })(),
   cuisines: new Set(['tr']),
   cuisineWeights: { tr: 5 },
-  diet: { style: 'normal', halal: false, athlete: false, light: false },
+  diet: { style: 'normal', halal: false, athlete: false, light: false, seasonal: true },
   members: [
     { age: 35, gender: 'e', morning: 'ev' },
     { age: 33, gender: 'k', morning: 'ev' },
@@ -709,6 +717,7 @@ function dietExtraOptions() {
     ['halal', t('Helal (domuz ürünleri hariç)')],
     ['athlete', t('Sporcu (protein ağırlıklı)')],
     ['light', t('Diyet (hafif yemekler öncelikli)')],
+    ['seasonal', t('Mevsim sebze-meyveleri öncelikli')],
   ];
 }
 
@@ -974,7 +983,7 @@ function renderResults() {
         : `${fmtEur(recipeCost(meal) / meal.serves)}${t('/porsiyon')}`;
       btn.innerHTML = `
         <span class="meal-name">${displayName(meal)}${extraBadge || ''}</span>
-        <span class="meal-meta">${meal.time} ${t('dk')} · ${perServing}</span>`;
+        <span class="meal-meta">${meal.time} ${t('dk')} · ${perServing}${seasonInfo(meal, CUR_MONTH).inS.length && seasonInfo(meal, CUR_MONTH).score > 0 ? ` · <span class="season-badge">🌿 ${t('mevsiminde')}</span>` : ''}</span>`;
       btn.addEventListener('click', () => openModal(meal, { day: day.day, scale: dinner.scale }));
       slot.append(lab, btn);
       return slot;
@@ -1134,7 +1143,7 @@ function toggleExtra(kind, dayName) {
   const used = Object.values(state.extras[kind]);
   let candidates = pool.filter((r) => !used.includes(r));
   if (!candidates.length) candidates = pool;
-  state.extras[kind][dayName] = weightedPick(candidates, (x) => cuisineWeight(x.cuisine, state));
+  state.extras[kind][dayName] = weightedPick(candidates, (x) => cuisineWeight(x.cuisine, state) * seasonFactor(x, state));
   renderResults();
   saveState();
 }
@@ -1151,7 +1160,7 @@ function toggleGuest(dayName) {
     const used = Object.values(state.guestRecipes);
     let candidates = pool.filter((r) => !used.includes(r));
     if (!candidates.length) candidates = pool;
-    state.guestRecipes[dayName] = weightedPick(candidates, (x) => cuisineWeight(x.cuisine, state));
+    state.guestRecipes[dayName] = weightedPick(candidates, (x) => cuisineWeight(x.cuisine, state) * seasonFactor(x, state));
     toast(`${tDay(dayName)}: ${t('Misafir menüsü eklendi. Malzemeler otomatik artırılır.')}`);
   }
   renderResults();
@@ -1194,6 +1203,7 @@ function openModal(recipe, ctx) {
       const unit = ing.unit === 'g' ? 'g' : tUnit(ing.unit);
       return `<li><span>${tIng(name)}</span><span>${q} ${unit}</span></li>`;
     }).join('')}</ul>
+    ${seasonLine(recipe)}
     ${equipTips(recipe)}
     <h4>${t('Hazırlanışı')}</h4>
     <ol class="steps">${tSteps(recipe).map((s) => `<li>${s}</li>`).join('')}</ol>
@@ -1213,6 +1223,14 @@ function nutritionBlock(recipe) {
         <span class="nutri-src">${t('Kaynağı:')} ${[...new Set(sources)].map(tIng).join(', ')}</span></div></li>`;
     }).join('')}</ul>
     <p class="nutri-note">${t('Genel bilgilendirmedir, tıbbi tavsiye değildir. Değerler malzemelerin bilinen başlıca besin kaynaklarına göre gösterilir.')}</p>`;
+}
+function seasonLine(recipe) {
+  const { inS, outS } = seasonInfo(recipe, CUR_MONTH);
+  if (!inS.length && !outS.length) return '';
+  const parts = [];
+  if (inS.length) parts.push(`🌿 ${t('Şu an mevsiminde:')} ${inS.map(tIng).join(', ')}`);
+  if (outS.length) parts.push(`❄️ ${t('Mevsim dışı (ithal/sera):')} ${outS.map(tIng).join(', ')}`);
+  return `<div class="season-line">${parts.map((x) => `<p>${x}</p>`).join('')}</div>`;
 }
 function equipTips(recipe) {
   const eq = state.equipment;

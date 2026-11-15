@@ -864,3 +864,28 @@ for (const r of RECIPES) {
   if (/tost makine/i.test(txt)) r.needs.push('tost');
   if (/mangal|ızgara/i.test(txt)) r.needs.push('mangal');
 }
+
+/* =========================================================
+   v9: MEVSİM TAKVİMİ (Almanya / Orta Avrupa, açık alan + depo)
+   Ay numaraları 1–12. Listede olmayan malzemeler (patates, soğan,
+   mantar, muz, limon, dondurulmuş ürünler…) mevsimden bağımsız sayılır.
+   ========================================================= */
+const ING_SEASON = {
+  'domates': [7, 8, 9, 10], 'salatalık': [6, 7, 8, 9], 'kabak': [6, 7, 8, 9, 10],
+  'patlıcan': [7, 8, 9, 10], 'biber': [7, 8, 9, 10], 'taze fasulye': [7, 8, 9, 10],
+  'ıspanak': [3, 4, 5, 9, 10, 11], 'pırasa': [9, 10, 11, 12, 1, 2, 3, 4],
+  'lahana': [9, 10, 11, 12, 1, 2, 3], 'karnabahar': [6, 7, 8, 9, 10], 'brokoli': [6, 7, 8, 9, 10],
+  'havuç': [6, 7, 8, 9, 10, 11, 12, 1, 2, 3], 'kereviz': [9, 10, 11, 12, 1, 2, 3],
+  'marul': [5, 6, 7, 8, 9, 10], 'elma': [8, 9, 10, 11, 12, 1, 2, 3, 4],
+  'portakal': [11, 12, 1, 2, 3], 'dereotu': [5, 6, 7, 8, 9],
+};
+/* Tarifin bu aydaki mevsim durumu: mevsimindeki ve mevsim dışı sebze/meyveler */
+function seasonInfo(recipe, month) {
+  const inS = [], outS = [];
+  for (const [name] of recipe.ingredients) {
+    const m = ING_SEASON[name];
+    if (!m) continue;
+    (m.includes(month) ? inS : outS).push(name);
+  }
+  return { inS, outS, score: inS.length - outS.length };
+}

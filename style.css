@@ -1402,3 +1402,8 @@
 .taste-btn.like { color: var(--color-accent); border-color: var(--color-accent); }
 .taste-btn.nope { color: var(--color-error); border-color: #e7b9b4; }
 .taste-btn:active { transform: scale(.94); }
+
+/* v9: mevsim */
+.season-badge { color: var(--color-accent); font-weight: 600; white-space: nowrap; }
+.season-line { background: var(--color-olive-soft); border-radius: var(--radius-md); padding: 8px 12px; margin: 12px 0; }
+.season-line p { margin: 3px 0; font-size: var(--text-sm); }

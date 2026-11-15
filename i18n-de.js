@@ -509,3 +509,11 @@ Object.assign(window.I18N.de.ui, {
   "Beğendim": "Gefällt mir",
   "Atla, planı oluştur": "Überspringen, Plan erstellen",
 });
+
+/* ---- v9: mevsim ---- */
+Object.assign(window.I18N.de.ui, {
+  "Mevsim sebze-meyveleri öncelikli": "Saisonales Obst & Gemüse bevorzugen",
+  "mevsiminde": "saisonal",
+  "Şu an mevsiminde:": "Gerade Saison:",
+  "Mevsim dışı (ithal/sera):": "Nicht in Saison (Import/Gewächshaus):",
+});
